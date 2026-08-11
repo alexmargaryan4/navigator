@@ -32,6 +32,17 @@ jobs:
       - name: Test
         run: flutter test
 
+      - name: Check secrets are present (lengths only, no leaked values)
+        run: |
+          echo "MAP_API_KEY length: ${#MAP_API_KEY}"
+          echo "GROQ_API_KEY length: ${#GROQ_API_KEY}"
+          if [ -z "$MAP_API_KEY" ]; then
+            echo "::error::MAP_API_KEY secret is empty or not set on this repo/branch."
+          fi
+        env:
+          MAP_API_KEY: ${{ secrets.MAP_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
       - name: Build unsigned iOS release
         run: |
           flutter build ios --release --no-codesign \
