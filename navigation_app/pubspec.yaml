@@ -20,7 +20,7 @@ dependencies:
 
   # Map rendering (vector maps, MapLibre-compatible style spec, works with
   # Mapbox-hosted vector tiles/styles via a standard style URL).
-  maplibre_gl: ^0.20.0
+  maplibre_gl: ^0.23.0
 
   # Networking
   http: ^1.2.2
