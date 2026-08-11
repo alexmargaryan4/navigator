@@ -38,7 +38,7 @@ class MapboxMapController {
       MapStyle.routeLineCasingLayerId,
       const LineLayerProperties(
         lineColor: '#0B1220',
-        lineWidth: [Expressions.interpolate, 'linear', 1, [Expressions.zoom], 10, 8, 18, 16],
+        lineWidth: [Expressions.interpolate, 'linear', Expressions.zoom, 10, 8, 18, 16],
         lineOpacity: 0.35,
         lineCap: 'round',
         lineJoin: 'round',
@@ -49,7 +49,7 @@ class MapboxMapController {
       MapStyle.routeLineLayerId,
       const LineLayerProperties(
         lineColor: '#2563EB',
-        lineWidth: [Expressions.interpolate, 'linear', 1, [Expressions.zoom], 10, 5, 18, 12],
+        lineWidth: [Expressions.interpolate, 'linear', Expressions.zoom, 10, 5, 18, 12],
         lineCap: 'round',
         lineJoin: 'round',
       ),
@@ -64,7 +64,7 @@ class MapboxMapController {
       MapStyle.alternativeRouteLayerPrefix + '0',
       const LineLayerProperties(
         lineColor: '#9AA1AC',
-        lineWidth: [Expressions.interpolate, 'linear', 1, [Expressions.zoom], 10, 4, 18, 9],
+        lineWidth: [Expressions.interpolate, 'linear', Expressions.zoom, 10, 4, 18, 9],
         lineOpacity: 0.65,
         lineCap: 'round',
         lineJoin: 'round',
@@ -300,7 +300,7 @@ class MapboxMapController {
           MapStyle.trafficSourceId,
           MapStyle.trafficLayerId,
           const LineLayerProperties(
-            lineWidth: [Expressions.interpolate, 'linear', 1, [Expressions.zoom], 10, 2, 18, 6],
+            lineWidth: [Expressions.interpolate, 'linear', Expressions.zoom, 10, 2, 18, 6],
             lineColor: [
               Expressions.match,
               [Expressions.get, 'congestion'],
