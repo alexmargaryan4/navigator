@@ -1,0 +1,68 @@
+name: navigation_app
+description: >
+  A modern, AI-powered navigation app built with Flutter. Real maps,
+  real routing, real traffic, real parking data, and natural-language
+  AI navigation commands — no fabricated data, no custom backend.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State management / DI
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Map rendering (vector maps, MapLibre-compatible style spec, works with
+  # Mapbox-hosted vector tiles/styles via a standard style URL).
+  maplibre_gl: ^0.20.0
+
+  # Networking
+  http: ^1.2.2
+
+  # Location
+  geolocator: ^13.0.2
+  permission_handler: ^11.3.1
+  geolocator_android: ^4.6.1
+  geolocator_apple: ^2.3.9
+
+  # Voice
+  speech_to_text: ^7.0.0
+  flutter_tts: ^4.2.0
+
+  # Utilities
+  equatable: ^2.0.7
+  intl: ^0.19.0
+  shared_preferences: ^2.3.3
+  flutter_svg: ^2.0.16
+  vector_math: ^2.1.4
+  collection: ^1.19.0
+
+  # Typography. Loads the Inter family from Google Fonts' font cache at
+  # runtime (and bundles it offline after first fetch), so no binary font
+  # file needs to be committed to the repository — a real requirement
+  # here since the project is edited entirely from a phone via GitHub.
+  google_fonts: ^6.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/
+    - assets/map_styles/
+    - assets/animations/
+
+  # Inter is loaded through the google_fonts package at runtime instead of
+  # a bundled TTF (see the google_fonts dependency above), so no `fonts:`
+  # section is declared here.
