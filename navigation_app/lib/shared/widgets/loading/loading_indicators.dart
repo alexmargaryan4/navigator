@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// Context-aware loading states — never a single generic spinner
 /// everywhere (product spec §29, §57). Each variant pairs a short label
