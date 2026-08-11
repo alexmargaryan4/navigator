@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import '../../../core/animation/motion_tokens.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// A restrained "Liquid Glass" surface: a blurred, semi-transparent panel
 /// with a soft border and shadow that animates in/out smoothly.
