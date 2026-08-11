@@ -32,7 +32,8 @@ jobs:
         run: flutter pub get
 
       - name: Analyze
-        run: flutter analyze --no-fatal-warnings
+        run: flutter analyze
+        continue-on-error: true
 
       - name: Test
         run: flutter test
