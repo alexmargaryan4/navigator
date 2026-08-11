@@ -5,6 +5,7 @@ import 'package:maplibre_gl/maplibre_gl.dart';
 import '../../../app/providers/location_providers.dart';
 import '../../../app/providers/repository_providers.dart';
 import '../../../core/animation/motion_tokens.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/permissions/location_permission_handler.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/geo_point.dart';
@@ -129,6 +130,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onMapClick: (_, latLng) => _handleMapTap(latLng),
             ),
           ),
+
+          // Diagnostic banner: maplibre_gl has no callback for a failed
+          // style load (e.g. Mapbox rejecting an empty/invalid token),
+          // so a bad build silently shows a blank map with no error
+          // anywhere. This makes that specific failure mode visible
+          // on-device instead of only debuggable from CI logs or Xcode.
+          if (!AppConfig.hasMapKey)
+            Positioned(
+              top: 56,
+              left: 16,
+              right: 16,
+              child: Material(
+                color: Colors.red.shade700,
+                borderRadius: BorderRadius.circular(12),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Text(
+                    'Map key missing: this build was compiled without '
+                    'MAP_API_KEY, so map tiles cannot load.',
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ),
+            ),
 
           // Permission prompt — shown as a dismissible, animated banner
           // rather than a blocking dialog, so the map is still usable.
