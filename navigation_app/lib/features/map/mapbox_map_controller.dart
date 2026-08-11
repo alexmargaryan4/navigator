@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../core/animation/motion_tokens.dart';
@@ -335,13 +336,16 @@ class MapboxMapController {
   /// Switches Mapbox Standard's `lightPreset` config (day/night) instead
   /// of swapping the whole style URL, so light/dark theme changes never
   /// trigger a full style reload / visible flash (see [MapStyle]).
+  ///
+  /// NOTE: `maplibre_gl`'s [MapLibreMapController] doesn't expose a style
+  /// import-config API (that's a Mapbox GL Native-only concept), so this
+  /// currently falls straight through to the safe no-op below. If we
+  /// migrate to a Mapbox Standard-capable renderer later, swap this back
+  /// to a real `setStyleImportConfigProperty('basemap', 'lightPreset',
+  /// preset)` call.
   Future<void> setLightPreset(String preset) async {
     try {
-      await _map.setStyleImportConfigProperty(
-        'basemap',
-        'lightPreset',
-        preset,
-      );
+      // Unsupported by maplibre_gl today — see NOTE above.
     } catch (_) {
       // Older/alternate styles may not expose a "basemap" import or a
       // lightPreset config — safe to ignore, the base style's own
