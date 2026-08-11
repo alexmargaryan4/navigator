@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../app/providers/location_providers.dart';
+import '../../../app/providers/repository_providers.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/permissions/location_permission_handler.dart';
 import '../../../core/theme/app_theme.dart';
@@ -21,9 +22,9 @@ import '../../search/presentation/place_info_card.dart';
 import '../../search/presentation/search_sheet.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../map_style.dart';
-import 'mapbox_map_controller.dart';
+import '../mapbox_map_controller.dart';
+import '../../traffic/presentation/traffic_toggle_button.dart';
 import 'map_action_button.dart';
-import 'traffic_toggle_button.dart';
 
 /// The root screen of the app — the map is the visual hero (spec §36),
 /// with every other feature (search, route preview, navigation, AI,
