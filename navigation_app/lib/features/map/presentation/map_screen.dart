@@ -43,6 +43,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   MapboxMapController? _controller;
   bool _stylesReady = false;
   bool _searchOpen = false;
+  Brightness? _mapStyleBrightness;
 
   @override
   void initState() {
@@ -58,16 +59,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
   Future<void> _onStyleLoaded() async {
+    // A style reload (including one triggered by switching styleString
+    // for a light/dark theme change, see build()) wipes every source
+    // and layer MapLibre knows about, so sources must always be
+    // re-added here rather than only on first load.
     await _controller?.initializeSources();
     if (!mounted) return;
     setState(() => _stylesReady = true);
-
-    final brightness = Theme.of(context).brightness;
-    await _controller?.setLightPreset(
-      brightness == Brightness.dark
-          ? MapStyle.lightPresetNight
-          : MapStyle.lightPresetDay,
-    );
 
     final last = await ref.read(lastKnownLocationProvider.future);
     if (last != null && mounted) {
@@ -87,15 +85,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       _reactToTripChange(previous, next);
     });
 
+    final brightness = Theme.of(context).brightness;
+    _mapStyleBrightness ??= brightness;
+
     ref.listen(themeBrightnessProvider(context), (previous, next) {
-      if (previous != next && _stylesReady) {
-        _controller?.setLightPreset(
-          next == Brightness.dark
-              ? MapStyle.lightPresetNight
-              : MapStyle.lightPresetDay,
-        );
+      // maplibre_gl has no live "recolor" API for a loaded style — the
+      // supported way to switch light/dark basemaps is to swap
+      // MapLibreMap.styleString itself, which triggers a full style
+      // reload (onStyleLoadedCallback fires again and re-adds sources).
+      if (previous != next && mounted) {
+        setState(() => _mapStyleBrightness = next);
       }
     });
+
+    final styleString = _mapStyleBrightness == Brightness.dark
+        ? MapStyle.dark
+        : MapStyle.light;
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -103,7 +108,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         children: [
           Positioned.fill(
             child: MapLibreMap(
-              styleString: MapStyle.light,
+              key: ValueKey(styleString),
+              styleString: styleString,
               initialCameraPosition: const CameraPosition(
                 target: LatLng(40.1792, 44.4991), // Yerevan — sensible default
                 zoom: 12,
