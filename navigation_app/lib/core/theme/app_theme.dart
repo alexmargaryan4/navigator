@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
+export 'app_colors.dart';
+
 /// Builds Flutter [ThemeData] from our semantic [AppColors] tokens.
 ///
 /// Rounded, comfortable shapes and restrained elevation are used
