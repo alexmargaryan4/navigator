@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../mapbox_map_controller.dart';
-import 'map_action_button.dart';
+import '../../map/mapbox_map_controller.dart';
+import '../../map/presentation/map_action_button.dart';
 
 /// Toggles the live Mapbox traffic vector-tile overlay on the base map
 /// (product spec §42) directly through [MapboxMapController].
