@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers/location_providers.dart';
 import '../../../core/animation/motion_tokens.dart';
+import '../../../core/location/location_tracker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/geo_point.dart';
 import '../../../domain/entities/place.dart';
@@ -49,7 +50,7 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
     super.dispose();
   }
 
-  GeoPoint? _proximity(AsyncValue<dynamic> lastKnown) {
+  GeoPoint? _proximity(AsyncValue<LocationSample?> lastKnown) {
     final value = lastKnown.valueOrNull;
     if (value == null) return null;
     return GeoPoint(latitude: value.latitude, longitude: value.longitude);
