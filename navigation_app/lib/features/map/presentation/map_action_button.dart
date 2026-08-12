@@ -114,9 +114,9 @@ class MapActionButton extends StatelessWidget {
 
             filter: ImageFilter.blur(
 
-              sigmaX: 5,
+              sigmaX: 2,
 
-              sigmaY: 5,
+              sigmaY: 2,
 
             ),
 
@@ -152,9 +152,9 @@ class MapActionButton extends StatelessWidget {
 
                         colors: [
 
-                          Colors.white.withOpacity(0.22),
+                          Colors.white.withOpacity(0.12),
 
-                          Colors.white.withOpacity(0.09),
+                          Colors.white.withOpacity(0.045),
 
                         ],
 
@@ -197,16 +197,9 @@ class MapActionButton extends StatelessWidget {
                           radius: 0.85,
 
                           colors: [
-
-                            Colors.white.withOpacity(
-
-                              isActive ? 0.24 : 0.16,
-
-                            ),
-
-                            Colors.white.withOpacity(0.0),
-
-                          ],
+  Colors.white.withOpacity(0.10),
+  Colors.white.withOpacity(0.0),
+],
 
                         ),
 
