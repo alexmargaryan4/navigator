@@ -52,8 +52,8 @@ class GlassSurface extends StatelessWidget {
       borderRadius: borderRadius,
       child: BackdropFilter(
         filter: ImageFilter.blur(
-          sigmaX: 2,
-          sigmaY: 2,
+          sigmaX: 1,
+          sigmaY: 1,
         ),
         child: AnimatedContainer(
           duration: spec.duration,
