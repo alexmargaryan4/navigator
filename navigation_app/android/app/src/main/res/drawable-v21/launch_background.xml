@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Native Android launch background shown while the app process starts,
+  before the Flutter engine draws its first frame.
+
+  Previously a plain white fill — replaced with a solid flat fill in the
+  app's brand navy (the darkest stop of the blue -> teal brand gradient,
+  see lib/core/theme/app_colors.dart AppColors.dark.background). This
+  intentionally matches the color the animated Flutter splash
+  (lib/app/splash/splash_screen.dart) opens on, so the handoff from the
+  native launch screen to the first Flutter frame has no visible seam or
+  white flash — the actual animation (drifting gradient blobs, pulsing
+  brand mark) lives entirely in Flutter via SplashScreen/SplashGate.
+-->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+    <item android:drawable="@color/launch_background_color" />
 </layer-list>
