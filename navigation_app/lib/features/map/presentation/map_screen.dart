@@ -10,6 +10,7 @@ import '../../../core/permissions/location_permission_handler.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/geo_point.dart';
 import '../../../domain/entities/place.dart';
+import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
 import '../../../shared/widgets/navigation/app_page_route.dart';
@@ -401,31 +402,45 @@ class _TopBar extends StatelessWidget {
           child: Pressable(
             onTap: onSearchTap,
             borderRadius: BorderRadius.circular(28),
-            child: GlassSurface(
+            scaleAmount: 0.98,
+            child: ClipRRect(
               borderRadius: BorderRadius.circular(28),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  Icon(Icons.search, color: colors.onSurfaceMuted, size: 20),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Where to?',
-                    style: TextStyle(color: colors.onSurfaceMuted, fontSize: 16),
-                  ),
-                ],
+              child: GlassSurface(
+                borderRadius: BorderRadius.circular(28),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppGradients.brandSubtle(colors),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(Icons.search,
+                          color: colors.accent, size: 16),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Where to?',
+                      style: TextStyle(
+                        color: colors.onSurfaceMuted,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
         const SizedBox(width: 12),
-        Pressable(
+        AppIconButton(
+          icon: Icons.menu_rounded,
           onTap: onMenuTap,
-          borderRadius: BorderRadius.circular(28),
-          child: GlassSurface(
-            borderRadius: BorderRadius.circular(28),
-            padding: const EdgeInsets.all(14),
-            child: Icon(Icons.menu_rounded, color: colors.onSurface, size: 22),
-          ),
+          size: 52,
         ),
       ],
     );
