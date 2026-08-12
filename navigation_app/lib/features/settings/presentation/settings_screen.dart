@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../app/providers/theme_mode_provider.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
 
@@ -77,16 +78,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           children: [
             Row(
               children: [
-                Pressable(
+                AppIconButton(
+                  icon: Icons.arrow_back_rounded,
                   onTap: () => Navigator.of(context).maybePop(),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(Icons.arrow_back_rounded,
-                        color: colors.onSurface, size: 22),
-                  ),
+                  size: 40,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 12),
                 Text(
                   'Settings',
                   style: TextStyle(
@@ -113,16 +110,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onTap: () => _setMode(mode),
                       borderRadius: BorderRadius.circular(14),
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOut,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOutCubic,
                         margin: const EdgeInsets.symmetric(vertical: 2),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? colors.accent.withOpacity(0.12)
-                              : Colors.transparent,
+                          gradient:
+                              isSelected ? AppGradients.brandSubtle(colors) : null,
                           borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isSelected
+                                ? colors.accent.withOpacity(0.3)
+                                : Colors.transparent,
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           children: [
