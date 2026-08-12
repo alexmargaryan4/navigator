@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -131,149 +130,69 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: ClipRRect(
-  borderRadius: BorderRadius.circular(20),
-  child: BackdropFilter(
-    filter: ImageFilter.blur(
-      sigmaX: 5,
-      sigmaY: 5,
-    ),
-    child: AnimatedContainer(
-      duration: motion.microInteraction.duration,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: const Alignment(-0.8, -1),
-          end: const Alignment(0.8, 1),
-          colors: [
-            Colors.white.withOpacity(
-              _focusNode.hasFocus ? 0.24 : 0.22,
-            ),
-            Colors.white.withOpacity(0.09),
-          ],
-        ),
-        border: Border.all(
-          color: _focusNode.hasFocus
-              ? Colors.white.withOpacity(0.28)
-              : Colors.white.withOpacity(0.20),
-          width: _focusNode.hasFocus ? 0.9 : 0.8,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(
-              _focusNode.hasFocus ? 0.12 : 0.10,
-            ),
-            blurRadius: _focusNode.hasFocus ? 16 : 14,
-            offset: const Offset(0, 6),
-            spreadRadius: -4,
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Stack(
-        children: [
-          // Тот же самый мягкий блик, что и на MapActionButton.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: RadialGradient(
-                    center: const Alignment(-0.55, -0.65),
-                    radius: 0.85,
-                    colors: [
-                      Colors.white.withOpacity(
-                        _focusNode.hasFocus ? 0.24 : 0.16,
-                      ),
-                      Colors.white.withOpacity(0.0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Очень лёгкая глубина снизу.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.035),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          Row(
-            children: [
-              Icon(
-                Icons.search,
-                color: colors.onSurfaceMuted,
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  autofocus: true,
-                  style: TextStyle(color: colors.onSurface),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                    contentPadding: const EdgeInsets.symmetric(
-                      vertical: 14,
-                    ),
-                    hintText:
-                        'Search for a place, address, city…',
-                    hintStyle: TextStyle(
-                      color: colors.onSurfaceMuted,
-                    ),
-                  ),
-                  onChanged: (q) {
-                    setState(() {});
-                    ref
-                        .read(searchControllerProvider.notifier)
-                        .onQueryChanged(
-                          q,
-                          proximity: _proximity(lastKnown),
-                        );
-                  },
-                ),
-              ),
-              if (_controller.text.isNotEmpty)
-                Pressable(
-                  onTap: () {
-                    _controller.clear();
-                    setState(() {});
-                    ref
-                        .read(searchControllerProvider.notifier)
-                        .clear();
-                  },
-                  child: Icon(
-                    Icons.close_rounded,
-                    color: colors.onSurfaceMuted,
-                    size: 18,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    ),
-  ),
-),
+                        child: AnimatedContainer(
+                          duration: motion.microInteraction.duration,
+                          decoration: BoxDecoration(
+                            color: colors.inputFill,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _focusNode.hasFocus
+                                  ? colors.inputBorderFocused
+                                  : colors.inputBorder,
+                              width: _focusNode.hasFocus ? 1.8 : 1.3,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Row(
+                            children: [
+                              Icon(Icons.search,
+                                  color: colors.onSurfaceMuted, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: TextField(
+                                  controller: _controller,
+                                  focusNode: _focusNode,
+                                  autofocus: true,
+                                  style: TextStyle(color: colors.onSurface),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    filled: false,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 14),
+                                    hintText:
+                                        'Search for a place, address, city…',
+                                    hintStyle:
+                                        TextStyle(color: colors.onSurfaceMuted),
+                                  ),
+                                  onChanged: (q) {
+                                    setState(() {});
+                                    ref
+                                        .read(searchControllerProvider.notifier)
+                                        .onQueryChanged(
+                                          q,
+                                          proximity: _proximity(lastKnown),
+                                        );
+                                  },
+                                ),
+                              ),
+                              if (_controller.text.isNotEmpty)
+                                Pressable(
+                                  onTap: () {
+                                    _controller.clear();
+                                    setState(() {});
+                                    ref
+                                        .read(searchControllerProvider.notifier)
+                                        .clear();
+                                  },
+                                  child: Icon(Icons.close_rounded,
+                                      color: colors.onSurfaceMuted, size: 18),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Pressable(
