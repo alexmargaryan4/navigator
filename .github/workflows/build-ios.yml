@@ -47,7 +47,7 @@ jobs:
         run: |
           flutter build ios --release --no-codesign \
             --dart-define=MAP_API_KEY=${{ secrets.MAP_API_KEY }} \
-            --dart-define=GROQ_API_KEY=${{ secrets.GROQ_API_KEY }} \
+            --dart-define=GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
 
       - name: Package unsigned IPA
         run: |
