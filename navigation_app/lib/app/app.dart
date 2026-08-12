@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/config/app_name.dart';
 import '../core/theme/app_theme.dart';
 import '../features/map/presentation/map_screen.dart';
 import 'providers/theme_mode_provider.dart';
@@ -24,7 +25,7 @@ class NavigationApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
-      title: 'Navigator',
+      title: AppName.displayName,
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
       theme: AppTheme.light(),
