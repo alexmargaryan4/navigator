@@ -1,1 +1,7 @@
-
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown on the home screen launcher / app switcher when the device
+         language is Russian. Android resolves this automatically based
+         on the "ru" locale qualifier on this values-ru/ folder. -->
+    <string name="app_name">НавИИ</string>
+</resources>
