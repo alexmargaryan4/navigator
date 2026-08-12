@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../app/providers/location_providers.dart';
@@ -24,6 +23,7 @@ import '../../search/presentation/place_info_card.dart';
 import '../../search/presentation/search_sheet.dart';
 import '../../settings/presentation/settings_screen.dart';
 import '../map_style.dart';
+import '../map_style_resolver.dart';
 import '../mapbox_map_controller.dart';
 import '../../traffic/presentation/traffic_toggle_button.dart';
 import 'map_action_button.dart';
@@ -47,15 +47,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _searchOpen = false;
   Brightness? _mapStyleBrightness;
 
-  // Diagnostic-only: maplibre_gl swallows a rejected style load (bad/
-  // wrong-type Mapbox token, exhausted quota, etc.) and just renders a
-  // blank map with no callback at all — see the note on the banner
-  // below. This does one throwaway GET against the exact style URL the
-  // MapLibreMap widget is pointed at, purely to surface *why* Mapbox
-  // rejected it, if it did.
-  String? _styleProbeError;
-  bool _nativeViewCreated = false;
-  bool _styleLoadedFired = false;
+  // maplibre_gl (MapLibre Native) cannot resolve the `mapbox://` scheme
+  // that Mapbox's Styles API uses internally for its `sources`, `sprite`
+  // and `glyphs` fields (see MapStyleResolver's doc comment) — so the
+  // Mapbox style URL is first rewritten to a local, HTTPS-only copy of
+  // the style before being handed to MapLibreMap. This tracks that
+  // resolution per light/dark style so it only runs once per style, and
+  // surfaces the concrete failure reason if it ever fails, since a
+  // failed style load otherwise fails completely silently.
+  final Map<String, String> _resolvedStylePaths = {};
+  String? _styleResolutionError;
 
   @override
   void initState() {
@@ -63,35 +64,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(locationPermissionProvider.notifier).request();
     });
-    _probeStyleUrl();
+    _resolveStyle(MapStyle.light);
   }
 
-  Future<void> _probeStyleUrl() async {
+  Future<void> _resolveStyle(String mapboxStyleUrl) async {
     if (!AppConfig.hasMapKey) return;
+    if (_resolvedStylePaths.containsKey(mapboxStyleUrl)) return;
     try {
-      final response = await http
-          .get(Uri.parse(MapStyle.light))
-          .timeout(const Duration(seconds: 10));
-      String detail = 'HTTP ${response.statusCode}';
-      if (response.statusCode != 200) {
-        try {
-          final body = response.body;
-          if (body.isNotEmpty) detail += ': $body';
-        } catch (_) {}
+      final path = await MapStyleResolver.resolve(mapboxStyleUrl);
+      if (mounted) {
+        setState(() {
+          _resolvedStylePaths[mapboxStyleUrl] = path;
+          _styleResolutionError = null;
+        });
       }
-      if (mounted) setState(() => _styleProbeError = detail);
     } catch (e) {
-      if (mounted) setState(() => _styleProbeError = 'Request failed: $e');
+      if (mounted) setState(() => _styleResolutionError = e.toString());
     }
   }
 
   void _onMapCreated(MapLibreMapController controller) {
     _rawController = controller;
     _controller = MapboxMapController(controller);
-    // Diagnostic-only: proves the native MapLibre platform view actually
-    // came up at all (separate question from whether the style/tiles it
-    // then tries to load succeed).
-    if (mounted) setState(() => _nativeViewCreated = true);
   }
 
   Future<void> _onStyleLoaded() async {
@@ -99,7 +93,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // for a light/dark theme change, see build()) wipes every source
     // and layer MapLibre knows about, so sources must always be
     // re-added here rather than only on first load.
-    if (mounted) setState(() => _styleLoadedFired = true);
     await _controller?.initializeSources();
     if (!mounted) return;
     setState(() => _stylesReady = true);
@@ -132,40 +125,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       // reload (onStyleLoadedCallback fires again and re-adds sources).
       if (previous != next && mounted) {
         setState(() => _mapStyleBrightness = next);
+        _resolveStyle(next == Brightness.dark ? MapStyle.dark : MapStyle.light);
       }
     });
 
-    final styleString = _mapStyleBrightness == Brightness.dark
+    final mapboxStyleUrl = _mapStyleBrightness == Brightness.dark
         ? MapStyle.dark
         : MapStyle.light;
+    final resolvedStylePath = _resolvedStylePaths[mapboxStyleUrl];
 
     return Scaffold(
       backgroundColor: colors.background,
       body: Stack(
         children: [
-          Positioned.fill(
-            child: MapLibreMap(
-              key: ValueKey(styleString),
-              styleString: styleString,
-              initialCameraPosition: const CameraPosition(
-                target: LatLng(40.1792, 44.4991), // Yerevan — sensible default
-                zoom: 12,
+          if (resolvedStylePath != null)
+            Positioned.fill(
+              child: MapLibreMap(
+                key: ValueKey(resolvedStylePath),
+                styleString: resolvedStylePath,
+                initialCameraPosition: const CameraPosition(
+                  target: LatLng(40.1792, 44.4991), // Yerevan — sensible default
+                  zoom: 12,
+                ),
+                onMapCreated: _onMapCreated,
+                onStyleLoadedCallback: _onStyleLoaded,
+                myLocationEnabled: permissionState.valueOrNull ==
+                    LocationPermissionState.granted,
+                myLocationTrackingMode: MyLocationTrackingMode.tracking,
+                myLocationRenderMode: MyLocationRenderMode.gps,
+                compassEnabled: false,
+                onCameraTrackingDismissed: () {
+                  if (tripState.isActive) {
+                    ref.read(tripControllerProvider.notifier).setFollowingUser(false);
+                  }
+                },
+                onMapClick: (_, latLng) => _handleMapTap(latLng),
               ),
-              onMapCreated: _onMapCreated,
-              onStyleLoadedCallback: _onStyleLoaded,
-              myLocationEnabled: permissionState.valueOrNull ==
-                  LocationPermissionState.granted,
-              myLocationTrackingMode: MyLocationTrackingMode.tracking,
-              myLocationRenderMode: MyLocationRenderMode.gps,
-              compassEnabled: false,
-              onCameraTrackingDismissed: () {
-                if (tripState.isActive) {
-                  ref.read(tripControllerProvider.notifier).setFollowingUser(false);
-                }
-              },
-              onMapClick: (_, latLng) => _handleMapTap(latLng),
+            )
+          else if (AppConfig.hasMapKey && _styleResolutionError == null)
+            const Positioned.fill(
+              child: Center(child: CircularProgressIndicator()),
             ),
-          ),
 
           // Diagnostic banner: maplibre_gl has no callback for a failed
           // style load (e.g. Mapbox rejecting an empty/invalid token),
@@ -191,12 +191,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
 
-          // Diagnostic-only banner: shows three independent signals so
-          // we can tell apart "native map view never came up" (iOS
-          // platform-view / signing / native-lib problem) from "view
-          // came up but the style/tiles never loaded" (token/network
-          // problem) from "everything fired, map should be visible".
-          if (AppConfig.hasMapKey)
+          // Diagnostic banner: shows exactly why the Mapbox style/tile
+          // rewrite failed (see MapStyleResolver), since a failure here
+          // otherwise leaves the map stuck on the loading spinner with
+          // no visible explanation.
+          if (AppConfig.hasMapKey && _styleResolutionError != null)
             Positioned(
               top: 56,
               left: 16,
@@ -208,10 +207,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 12),
                   child: Text(
-                    'Native map view created: $_nativeViewCreated\n'
-                    'onStyleLoaded fired: $_styleLoadedFired\n'
-                    'Style HTTP probe: ${_styleProbeError ?? "pending…"}\n'
-                    'Token: ${AppConfig.mapApiKey.isEmpty ? "EMPTY" : AppConfig.mapApiKey.substring(0, AppConfig.mapApiKey.length < 6 ? AppConfig.mapApiKey.length : 6)}… (len ${AppConfig.mapApiKey.length})',
+                    'Map style failed to load:\n$_styleResolutionError',
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
