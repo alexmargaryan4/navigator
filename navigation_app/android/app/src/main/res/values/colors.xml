@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Shared color resources for native (pre-Flutter) Android chrome.
+
+  launch_background_color mirrors the same brand navy used by the iOS
+  LaunchScreen.storyboard (see ios/Runner/Base.lproj/LaunchScreen.storyboard)
+  and the darkest stop of AppColors.dark.background in
+  lib/core/theme/app_colors.dart, so the native launch background, the
+  native iOS launch screen, and the first frame of the animated Flutter
+  splash (lib/app/splash/splash_screen.dart) all agree on the same tone —
+  no white flash and no visible color jump during app startup.
+-->
+<resources>
+    <color name="launch_background_color">#0B1E2B</color>
+</resources>
