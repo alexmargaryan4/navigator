@@ -1,1 +1,4 @@
-
+/* App name shown under the Home Screen icon and in the app switcher
+   when the device language is Russian. iOS picks this automatically
+   based on the "ru" locale in the user's Language & Region settings. */
+CFBundleDisplayName = "НавИИ";
