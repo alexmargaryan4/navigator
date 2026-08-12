@@ -1,16 +1,23 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// A restrained "Liquid Glass" surface: a blurred, semi-transparent panel
-/// with a soft border and shadow that animates in/out smoothly.
+/// The app's flat floating-surface treatment: a solid tinted panel with
+/// a hairline neutral border, matching [AppIconButton]'s look (the
+/// "hamburger menu" button) so every floating surface in the app —
+/// buttons, the search bar, and bottom-sheet cards alike — reads as one
+/// consistent, plain style.
 ///
-/// Deliberately subtle per product spec §26 ("premium, not flashy") — the
-/// blur sigma and opacity are kept low so text stays crisp and the map
-/// underneath remains legible.
+/// Previously this was a blurred "Liquid Glass" panel (a `BackdropFilter`
+/// blur + a semi-transparent tinted fill + a colored hairline border).
+/// That look was visually distinct from every button in the app, which
+/// all use a flat opaque-ish fill with a neutral divider-colored border
+/// and no blur — so surfaces like the "Where to?" search bar and the
+/// map's circular action buttons looked like a different design system
+/// from the rest of the UI. This version intentionally drops the blur
+/// and switches to the same neutral fill/border pairing [AppIconButton]
+/// uses, so there's a single flat style everywhere.
 class GlassSurface extends StatelessWidget {
   const GlassSurface({
     super.key,
@@ -23,11 +30,14 @@ class GlassSurface extends StatelessWidget {
 
   final Widget child;
   final BorderRadius borderRadius;
+
+  /// Kept for backwards compatibility with existing call sites; no
+  /// longer used now that this surface is flat rather than blurred.
   final double blurSigma;
   final EdgeInsetsGeometry? padding;
 
-  /// When false, animates the glass effect away (used e.g. when a panel
-  /// is dismissed but still present during its exit animation).
+  /// When false, animates the surface away (used e.g. when a panel is
+  /// dismissed but still present during its exit animation).
   final bool visible;
 
   @override
@@ -36,42 +46,36 @@ class GlassSurface extends StatelessWidget {
     final motion = MotionTokens.current();
     final spec = motion.overlayFade;
 
-    return ClipRRect(
-      borderRadius: borderRadius,
-      child: AnimatedContainer(
+    // Single decoration on a single Container — fill, border, and
+    // shadow all painted together in one pass, exactly like
+    // AppIconButton, so the edge is always crisp and even on every
+    // side (see the "floating border" note this replaced).
+    return AnimatedContainer(
+      duration: spec.duration,
+      curve: spec.curve,
+      padding: padding ?? const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: borderRadius,
+        color: visible
+            ? colors.onSurface.withOpacity(0.06)
+            : colors.onSurface.withOpacity(0),
+        border: Border.all(
+          color: colors.divider,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.shadow,
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
         duration: spec.duration,
         curve: spec.curve,
-        decoration: BoxDecoration(
-          borderRadius: borderRadius,
-          border: Border.all(color: colors.glassBorder, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: colors.shadow,
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: visible ? blurSigma : 0,
-            sigmaY: visible ? blurSigma : 0,
-          ),
-          child: AnimatedContainer(
-            duration: spec.duration,
-            curve: spec.curve,
-            padding: padding ?? const EdgeInsets.all(16),
-            color: visible
-                ? colors.glassSurface
-                : colors.glassSurface.withOpacity(0),
-            child: AnimatedOpacity(
-              opacity: visible ? 1 : 0,
-              duration: spec.duration,
-              curve: spec.curve,
-              child: child,
-            ),
-          ),
-        ),
+        child: child,
       ),
     );
   }
