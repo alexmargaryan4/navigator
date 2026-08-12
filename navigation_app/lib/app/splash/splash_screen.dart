@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../core/config/app_name.dart';
 import '../../core/theme/app_theme.dart';
 import 'splash_background.dart';
 import 'splash_mark.dart';
@@ -171,7 +172,7 @@ class _Wordmark extends StatelessWidget {
             colors: [colors.onSurface, colors.onSurface],
           ).createShader(bounds),
           child: Text(
-            'Navigator',
+            AppName.displayName,
             style: TextStyle(
               color: colors.onSurface,
               fontSize: 28,
@@ -182,7 +183,7 @@ class _Wordmark extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Wherever you\'re headed',
+          AppName.tagline,
           style: TextStyle(
             color: colors.onSurfaceMuted,
             fontSize: 13.5,
