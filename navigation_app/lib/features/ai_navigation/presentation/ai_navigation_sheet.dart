@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/providers/repository_providers.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
-import '../../../shared/widgets/glass/glass_surface.dart';
 import '../../../shared/widgets/loading/loading_indicators.dart';
 import '../application/ai_navigation_controller.dart';
 
@@ -29,6 +29,18 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
   final _focusNode = FocusNode();
   bool _listening = false;
   double _soundLevel = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Repaints the field's border color/width on focus change (see
+    // search_sheet.dart for the same pattern) since the Material
+    // InputDecoration border is disabled in favor of the themed
+    // AnimatedContainer border below.
+    _focusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
@@ -121,8 +133,30 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
                 ),
                 Row(
                   children: [
-                    Icon(Icons.auto_awesome, color: colors.accent, size: 22),
-                    const SizedBox(width: 10),
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: AppGradients.brand(colors),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.16),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colors.accentShadow,
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                            spreadRadius: -4,
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(Icons.auto_awesome,
+                          color: colors.onAccent, size: 17),
+                    ),
+                    const SizedBox(width: 12),
                     Text(
                       'AI Navigation',
                       style: TextStyle(
@@ -144,8 +178,18 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
                 Row(
                   children: [
                     Expanded(
-                      child: GlassSurface(
-                        borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: motion.microInteraction.duration,
+                        decoration: BoxDecoration(
+                          color: colors.inputFill,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _focusNode.hasFocus
+                                ? colors.inputBorderFocused
+                                : colors.inputBorder,
+                            width: _focusNode.hasFocus ? 1.8 : 1.3,
+                          ),
+                        ),
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: TextField(
                           controller: _controller,
@@ -154,7 +198,13 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
                           textInputAction: TextInputAction.send,
                           onSubmitted: (_) => _submit(),
                           decoration: InputDecoration(
+                            isDense: true,
                             border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            filled: false,
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 14),
                             hintText: 'e.g. "Take me to the airport"',
                             hintStyle: TextStyle(color: colors.onSurfaceMuted),
                           ),
@@ -168,18 +218,11 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
                       onTap: _toggleListening,
                     ),
                     const SizedBox(width: 10),
-                    Pressable(
+                    AppIconButton(
+                      icon: Icons.arrow_upward_rounded,
                       onTap: _submit,
-                      borderRadius: BorderRadius.circular(24),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: colors.accent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(Icons.arrow_upward_rounded,
-                            color: colors.onAccent, size: 20),
-                      ),
+                      filled: true,
+                      size: 48,
                     ),
                   ],
                 ),
@@ -267,15 +310,22 @@ class _MicButton extends StatelessWidget {
     return Pressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
+      scaleAmount: 0.94,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
-        padding: EdgeInsets.all(14 + (listening ? soundLevel * 4 : 0)),
+        width: 48,
+        height: 48,
+        padding: EdgeInsets.all(listening ? soundLevel * 3 : 0),
         decoration: BoxDecoration(
-          color: listening ? colors.error.withOpacity(0.15) : colors.surface,
+          color: listening ? colors.error.withOpacity(0.14) : null,
           shape: BoxShape.circle,
-          border: listening ? Border.all(color: colors.error, width: 1.5) : null,
+          border: Border.all(
+            color: listening ? colors.error.withOpacity(0.6) : colors.divider,
+            width: listening ? 1.6 : 1.2,
+          ),
         ),
+        alignment: Alignment.center,
         child: Icon(
           listening ? Icons.mic_rounded : Icons.mic_none_rounded,
           color: listening ? colors.error : colors.onSurfaceMuted,
