@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers/location_providers.dart';
+import '../../../app/providers/repository_providers.dart';
 import '../../../core/animation/motion_tokens.dart';
+import '../../../core/errors/app_failure.dart';
 import '../../../core/location/location_tracker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/geo_point.dart';
@@ -32,6 +34,7 @@ class SearchSheet extends ConsumerStatefulWidget {
 class _SearchSheetState extends ConsumerState<SearchSheet> {
   final _controller = TextEditingController();
   final _focusNode = FocusNode();
+  bool _resolving = false;
 
   @override
   void initState() {
@@ -54,6 +57,32 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
     final value = lastKnown.valueOrNull;
     if (value == null) return null;
     return GeoPoint(latitude: value.latitude, longitude: value.longitude);
+  }
+
+  /// `/suggest` results carry a placeholder (0, 0) location — the real
+  /// coordinates only come back from Search Box `/retrieve`. Resolving
+  /// here, before popping the sheet, is what makes the destination
+  /// marker/camera/route land on the actual picked place instead of
+  /// always snapping to (0, 0).
+  Future<void> _selectResult(Place place) async {
+    setState(() => _resolving = true);
+
+    final repo = ref.read(searchRepositoryProvider);
+    final result = await repo.retrieveSuggestion(place.id);
+
+    if (!mounted) return;
+    setState(() => _resolving = false);
+
+    result.when(
+      ok: (resolved) => Navigator.of(context).pop(resolved),
+      err: (f) => _showResolveError(f),
+    );
+  }
+
+  void _showResolveError(AppFailure failure) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(failure.message)),
+    );
   }
 
   @override
@@ -202,19 +231,32 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: state.results.length,
-      itemBuilder: (context, index) {
-        final place = state.results[index];
-        return StaggeredFadeIn(
-          index: index,
-          child: _SearchResultTile(
-            place: place,
-            onTap: () => Navigator.of(context).pop(place),
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: state.results.length,
+          itemBuilder: (context, index) {
+            final place = state.results[index];
+            return StaggeredFadeIn(
+              index: index,
+              child: _SearchResultTile(
+                place: place,
+                onTap: _resolving ? null : () => _selectResult(place),
+              ),
+            );
+          },
+        ),
+        if (_resolving)
+          const Positioned.fill(
+            child: ColoredBox(
+              color: Color(0x22000000),
+              child: Center(
+                child: ContextualLoadingIndicator(context_: LoadingContext.search),
+              ),
+            ),
           ),
-        );
-      },
+      ],
     );
   }
 }
@@ -223,7 +265,7 @@ class _SearchResultTile extends StatelessWidget {
   const _SearchResultTile({required this.place, required this.onTap});
 
   final Place place;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   IconData get _icon => switch (place.category) {
         PlaceCategory.restaurant => Icons.restaurant_rounded,
