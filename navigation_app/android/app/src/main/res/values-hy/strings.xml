@@ -1,1 +1,7 @@
-
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shown on the home screen launcher / app switcher when the device
+         language is Armenian. Android resolves this automatically based
+         on the "hy" locale qualifier on this values-hy/ folder. -->
+    <string name="app_name">ՆավԱԲ</string>
+</resources>
