@@ -64,16 +64,20 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
     return GeoPoint(latitude: value.latitude, longitude: value.longitude);
   }
 
-  /// `/suggest` results carry a placeholder (0, 0) location — the real
-  /// coordinates only come back from Search Box `/retrieve`. Resolving
-  /// here, before popping the sheet, is what makes the destination
-  /// marker/camera/route land on the actual picked place instead of
-  /// always snapping to (0, 0).
+  /// Mapbox `/suggest` results carry a placeholder (0, 0) location — the
+  /// real coordinates only come back from Search Box `/retrieve`.
+  /// Geoapify results already carry real coordinates from autocomplete.
+  /// [SearchRepository.resolveSelection] hides that distinction: it
+  /// resolves via `/retrieve` only when the picked place actually needs
+  /// it (see [Place.needsCoordinateResolution]), and returns Geoapify
+  /// results as-is. Resolving here, before popping the sheet, is what
+  /// makes the destination marker/camera/route land on the actual
+  /// picked place instead of always snapping to (0, 0).
   Future<void> _selectResult(Place place) async {
     setState(() => _resolving = true);
 
-    final repo = ref.read(searchRepositoryProvider);
-    final result = await repo.retrieveSuggestion(place.id);
+    final repo = ref.read(searchRepositoryContractProvider);
+    final result = await repo.resolveSelection(place);
 
     if (!mounted) return;
     setState(() => _resolving = false);
