@@ -403,35 +403,32 @@ class _TopBar extends StatelessWidget {
             onTap: onSearchTap,
             borderRadius: BorderRadius.circular(28),
             scaleAmount: 0.98,
-            child: ClipRRect(
+            child: GlassSurface(
               borderRadius: BorderRadius.circular(28),
-              child: GlassSurface(
-                borderRadius: BorderRadius.circular(28),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: AppGradients.brandSubtle(colors),
-                      ),
-                      alignment: Alignment.center,
-                      child: Icon(Icons.search,
-                          color: colors.accent, size: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: AppGradients.brandSubtle(colors),
                     ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Where to?',
-                      style: TextStyle(
-                        color: colors.onSurfaceMuted,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.search,
+                        color: colors.accent, size: 16),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'Where to?',
+                    style: TextStyle(
+                      color: colors.onSurfaceMuted,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

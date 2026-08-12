@@ -7,12 +7,12 @@ import '../../../shared/widgets/glass/glass_surface.dart';
 /// A single circular floating action button used in the map's
 /// right-side control stack (AI, parking, traffic, my-location).
 ///
-/// Deliberately built on [Pressable] + [GlassSurface] rather than a
-/// Material [IconButton] so every floating map control shares the same
-/// premium press feedback and glass treatment (product spec §17, §26).
-/// The active state uses the same brand gradient + hairline highlight
-/// border as [AppButton] so every "on" surface in the app — buttons and
-/// floating controls alike — reads as one consistent tone.
+/// Built on [Pressable] + [GlassSurface] so every floating map control
+/// shares the same press feedback and the same flat neutral surface
+/// used everywhere else in the app (product spec §17). The active
+/// state uses the same brand gradient + hairline highlight border as
+/// [AppButton] so every "on" surface in the app — buttons and floating
+/// controls alike — reads as one consistent tone.
 class MapActionButton extends StatelessWidget {
   const MapActionButton({
     super.key,
