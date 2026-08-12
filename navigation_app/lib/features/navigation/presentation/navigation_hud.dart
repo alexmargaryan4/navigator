@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/route.dart';
-import '../../../shared/widgets/buttons/pressable.dart';
+import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
 import '../../../shared/widgets/motion/animated_counter.dart';
 import '../application/trip_state.dart';
@@ -134,14 +134,10 @@ class NavigationHud extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            Pressable(
+                            AppIconButton(
+                              icon: Icons.close_rounded,
                               onTap: onEnd,
-                              borderRadius: BorderRadius.circular(16),
-                              child: Padding(
-                                padding: const EdgeInsets.all(6),
-                                child: Icon(Icons.close_rounded,
-                                    color: colors.onSurfaceMuted, size: 20),
-                              ),
+                              size: 34,
                             ),
                           ],
                         ),
@@ -160,15 +156,11 @@ class NavigationHud extends StatelessWidget {
             duration: motion.microInteraction.duration,
             child: IgnorePointer(
               ignoring: tripState.isFollowingUser,
-              child: Pressable(
+              child: AppIconButton(
+                icon: Icons.my_location_rounded,
                 onTap: onRecenter,
-                borderRadius: BorderRadius.circular(24),
-                child: GlassSurface(
-                  borderRadius: BorderRadius.circular(24),
-                  padding: const EdgeInsets.all(12),
-                  child: Icon(Icons.my_location_rounded,
-                      color: colors.accent, size: 22),
-                ),
+                filled: true,
+                size: 48,
               ),
             ),
           ),

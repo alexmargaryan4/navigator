@@ -4,6 +4,7 @@ import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/route.dart';
 import '../../../domain/entities/travel_mode.dart';
+import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
 import '../../../shared/widgets/loading/loading_indicators.dart';
@@ -77,14 +78,10 @@ class RoutePreviewSheet extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Pressable(
+                    AppIconButton(
+                      icon: Icons.close_rounded,
                       onTap: onCancel,
-                      borderRadius: BorderRadius.circular(16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(Icons.close_rounded,
-                            color: colors.onSurfaceMuted, size: 20),
-                      ),
+                      size: 34,
                     ),
                   ],
                 ),
@@ -132,14 +129,12 @@ class RoutePreviewSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed:
-                          tripState.selectedRoute == null ? null : onStartNavigation,
-                      icon: const Icon(Icons.navigation_rounded, size: 20),
-                      label: const Text('Start Navigation'),
-                    ),
+                  AppButton(
+                    label: 'Start Navigation',
+                    icon: Icons.navigation_rounded,
+                    onTap: tripState.selectedRoute == null
+                        ? null
+                        : onStartNavigation,
                   ),
                 ],
               ],
@@ -175,13 +170,21 @@ class _ModeSelector extends StatelessWidget {
             child: Pressable(
               onTap: () => onSelect(mode),
               borderRadius: BorderRadius.circular(16),
+              scaleAmount: 0.96,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: isSelected ? colors.accent : colors.surface,
+                  gradient: isSelected ? AppGradients.brand(colors) : null,
+                  color: isSelected ? null : colors.surface,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected
+                        ? Colors.white.withOpacity(0.16)
+                        : colors.divider,
+                    width: 1,
+                  ),
                 ),
                 child: Column(
                   children: [
@@ -241,16 +244,18 @@ class _RouteCard extends StatelessWidget {
     return Pressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
+      scaleAmount: 0.98,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
+        curve: Curves.easeOutCubic,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? colors.accent.withOpacity(0.12) : colors.surface,
+          gradient: isSelected ? AppGradients.brandSubtle(colors) : null,
+          color: isSelected ? null : colors.surface,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isSelected ? colors.accent : Colors.transparent,
-            width: 1.4,
+            color: isSelected ? colors.accent : colors.divider,
+            width: isSelected ? 1.4 : 1,
           ),
         ),
         // Opacity de-emphasizes alternatives relative to the selected
