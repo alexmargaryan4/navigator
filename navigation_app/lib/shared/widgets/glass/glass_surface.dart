@@ -43,7 +43,7 @@ class GlassSurface extends StatelessWidget {
         curve: spec.curve,
         decoration: BoxDecoration(
           borderRadius: borderRadius,
-          border: Border.all(color: colors.glassBorder, width: 1),
+          border: Border.all(color: colors.glassBorder, width: 1.2),
           boxShadow: [
             BoxShadow(
               color: colors.shadow,
