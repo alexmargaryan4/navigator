@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
+import '../glass/glass_surface.dart';
 import 'pressable.dart';
 
 /// Visual weight of an [AppButton].
@@ -232,28 +233,51 @@ class AppIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).appColors;
+
+    // The unfilled variant (e.g. the hamburger menu button in the
+    // map's top bar) now renders through GlassSurface itself instead
+    // of hand-rolling a similar-looking decoration — that previously
+    // drifted out of sync with GlassSurface (no boxShadow, no
+    // BackdropFilter) and made it visibly inconsistent with the other
+    // circular floating controls (MapActionButton) that already use
+    // GlassSurface. Filled stays a plain gradient circle, since that's
+    // an "active/on" state, not a neutral surface.
+    final circle = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: filled ? AppGradients.brand(colors) : null,
+        border: filled
+            ? Border.all(color: Colors.white.withOpacity(0.16), width: 1)
+            : null,
+      ),
+      alignment: Alignment.center,
+      child: filled
+          ? Icon(icon, size: size * 0.5, color: colors.onAccent)
+          : GlassSurface(
+              // GlassSurface already clips to this radius internally
+              // (ClipRRect), so a circular radius on a square box is
+              // enough to produce a perfect circle here.
+              borderRadius: BorderRadius.circular(size / 2),
+              padding: EdgeInsets.zero,
+              child: SizedBox(
+                width: size,
+                height: size,
+                child: Icon(
+                  icon,
+                  size: size * 0.5,
+                  color: colors.onSurfaceMuted,
+                ),
+              ),
+            ),
+    );
+
     return Pressable(
       onTap: onTap,
       borderRadius: BorderRadius.circular(size / 2),
       scaleAmount: 0.94,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: filled ? AppGradients.brand(colors) : null,
-          color: filled ? null : colors.onSurface.withOpacity(0.06),
-          border: filled
-              ? Border.all(color: Colors.white.withOpacity(0.16), width: 1)
-              : Border.all(color: colors.divider, width: 1),
-        ),
-        alignment: Alignment.center,
-        child: Icon(
-          icon,
-          size: size * 0.5,
-          color: filled ? colors.onAccent : colors.onSurfaceMuted,
-        ),
-      ),
+      child: circle,
     );
   }
 }
