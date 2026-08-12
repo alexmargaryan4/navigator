@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Navigator</string>
+	<string>NavAI</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -14,6 +14,17 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>navigation_app</string>
+	<!-- Declares which locales this app ships display-name/UI strings
+	     for. iOS uses this (plus each locale's InfoPlist.strings — see
+	     en.lproj, ru.lproj, hy.lproj) to pick CFBundleDisplayName based
+	     on the device's language setting: "НавИИ" for Russian, "ՆավԱԲ"
+	     for Armenian, "NavAI" for English and any other language. -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+		<string>hy</string>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -53,9 +64,9 @@
 	     first; "Always" is what lets navigation keep tracking if the
 	     screen locks mid-route. -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Navigator uses your location to show your position on the map and provide turn-by-turn directions.</string>
+	<string>NavAI uses your location to show your position on the map and provide turn-by-turn directions.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Navigator uses your location to keep guiding you turn-by-turn even when the app is in the background during active navigation.</string>
+	<string>NavAI uses your location to keep guiding you turn-by-turn even when the app is in the background during active navigation.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
@@ -64,8 +75,8 @@
 
 	<!-- Voice search and voice navigation (product spec §48, §49). -->
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Navigator uses the microphone so you can search for destinations and control navigation by voice.</string>
+	<string>NavAI uses the microphone so you can search for destinations and control navigation by voice.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>Navigator uses speech recognition to turn what you say into a destination search or navigation command.</string>
+	<string>NavAI uses speech recognition to turn what you say into a destination search or navigation command.</string>
 </dict>
 </plist>
