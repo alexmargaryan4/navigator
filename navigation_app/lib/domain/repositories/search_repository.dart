@@ -22,4 +22,17 @@ abstract interface class SearchRepository {
   /// Reverse-geocodes a coordinate into a human-readable place (e.g. for
   /// "long-press on map" or showing the current road name).
   Future<Result<Place>> reverseGeocode(GeoPoint point);
+
+  /// Resolves the final, usable coordinates for a result the user just
+  /// tapped in the search list.
+  ///
+  /// This is the single call site the UI needs after a selection —
+  /// which provider the result came from, and whether that provider
+  /// needs an extra round trip to get coordinates, stays an
+  /// implementation detail here rather than leaking into the search
+  /// screen. Concretely: Geoapify results already carry real
+  /// coordinates and are returned as-is; Mapbox `/suggest` results
+  /// (`Place.needsCoordinateResolution == true`) are resolved via
+  /// Mapbox `/retrieve` first.
+  Future<Result<Place>> resolveSelection(Place place);
 }
