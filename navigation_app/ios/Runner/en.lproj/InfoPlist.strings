@@ -1,1 +1,5 @@
-
+/* App name shown under the Home Screen icon and in the app switcher
+   when the device language is English (or falls back to English for
+   any language without its own InfoPlist.strings — see ru.lproj and
+   hy.lproj for Russian and Armenian). */
+CFBundleDisplayName = "NavAI";
