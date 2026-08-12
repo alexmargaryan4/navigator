@@ -13,6 +13,7 @@ import '../../../domain/entities/place.dart';
 import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
+import '../../../shared/widgets/layout/measure_size.dart';
 import '../../../shared/widgets/navigation/app_page_route.dart';
 import '../../ai_navigation/presentation/ai_navigation_sheet.dart';
 import '../../navigation/application/trip_controller.dart';
@@ -58,6 +59,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // failed style load otherwise fails completely silently.
   final Map<String, String> _resolvedStylePaths = {};
   String? _styleResolutionError;
+
+  // Measured height of RoutePreviewSheet (when showing), used to keep
+  // _RightControls pinned just above it. The sheet's height depends on
+  // its content — route count, error text, loading state — so a fixed
+  // offset drifts out of sync and lets the sheet cover the controls
+  // (as seen when the route list pushes the sheet taller than the old
+  // hand-picked constant assumed). Null when the sheet isn't showing.
+  double? _routeSheetHeight;
 
   @override
   void initState() {
@@ -268,6 +277,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ref.read(tripControllerProvider.notifier).startNavigation(),
               onCancel: () =>
                   ref.read(tripControllerProvider.notifier).clearDestination(),
+              onMeasured: (height) {
+                if (mounted && _routeSheetHeight != height) {
+                  setState(() => _routeSheetHeight = height);
+                }
+              },
             ),
 
           // Active navigation HUD.
@@ -282,10 +296,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
           // Right-side floating controls (traffic / re-center) — hidden
           // during active navigation since the HUD owns re-centering.
+          //
+          // bottom is derived from the *measured* height of whichever
+          // sheet is currently showing (RoutePreviewSheet, or
+          // PlaceInfoCard's fixed offset) rather than a constant, so the
+          // controls stay pinned just above it instead of being covered
+          // whenever the sheet grows taller than a hand-picked guess
+          // (e.g. multiple route alternatives pushing it past 220px).
           if (!tripState.isActive)
-            Positioned(
+            AnimatedPositioned(
+              duration: MotionTokens.current().microInteraction.duration,
+              curve: Curves.easeOutCubic,
               right: 16,
-              bottom: tripState.phase == TripPhase.idle ? 32 : 220,
+              bottom: _rightControlsBottomOffset(tripState),
               child: _RightControls(
                 controller: _controller,
                 onOpenParking: _openParking,
@@ -336,6 +359,37 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     if (!next.isActive && previous?.isActive == true) {
       await _controller!.clearRoutes();
       await _controller!.clearDestinationMarker();
+    }
+
+    // Left route preview -> forget the measured sheet height so a stale
+    // value from this trip can't leak into the next one's first frame.
+    if (next.phase != TripPhase.routePreview &&
+        previous?.phase == TripPhase.routePreview &&
+        mounted) {
+      setState(() => _routeSheetHeight = null);
+    }
+  }
+
+  /// Bottom offset for [_RightControls] so it never overlaps whatever
+  /// sheet/card is currently anchored to the bottom of the screen.
+  double _rightControlsBottomOffset(TripState tripState) {
+    switch (tripState.phase) {
+      case TripPhase.idle:
+        return 32;
+      case TripPhase.destinationSelected:
+        // Matches PlaceInfoCard's own `bottom: 24` positioning plus a
+        // small gap — that card's height is fairly constant (name +
+        // one action row), unlike the route sheet, so a fixed offset
+        // is fine here.
+        return 140;
+      case TripPhase.routePreview:
+        // Sheet height + its own bottom padding (24, see
+        // RoutePreviewSheet's outer Padding) + a gap above it.
+        final sheetHeight = _routeSheetHeight;
+        if (sheetHeight == null) return 220; // first frame, not measured yet
+        return sheetHeight + 16;
+      case TripPhase.navigating:
+        return 32;
     }
   }
 
