@@ -21,6 +21,7 @@ class PlaceModel {
         latitude: (coordinates[1] as num).toDouble(),
       ),
       category: _categoryFrom(properties),
+      source: PlaceSource.mapbox,
     );
   }
 
@@ -45,6 +46,8 @@ class PlaceModel {
           .toString(),
       location: const GeoPoint(latitude: 0, longitude: 0),
       category: _categoryFrom(suggestion),
+      source: PlaceSource.mapbox,
+      needsCoordinateResolution: true,
     );
   }
 
@@ -61,6 +64,7 @@ class PlaceModel {
         latitude: (center[1] as num).toDouble(),
       ),
       category: _categoryFromPlaceType(placeType),
+      source: PlaceSource.mapbox,
     );
   }
 
