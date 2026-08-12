@@ -54,6 +54,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // MapLibreMap widget is pointed at, purely to surface *why* Mapbox
   // rejected it, if it did.
   String? _styleProbeError;
+  bool _nativeViewCreated = false;
+  bool _styleLoadedFired = false;
 
   @override
   void initState() {
@@ -70,24 +72,26 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final response = await http
           .get(Uri.parse(MapStyle.light))
           .timeout(const Duration(seconds: 10));
-      if (response.statusCode == 200) {
-        if (mounted) setState(() => _styleProbeError = null);
-        return;
-      }
       String detail = 'HTTP ${response.statusCode}';
-      try {
-        final body = response.body;
-        if (body.isNotEmpty) detail += ': $body';
-      } catch (_) {}
+      if (response.statusCode != 200) {
+        try {
+          final body = response.body;
+          if (body.isNotEmpty) detail += ': $body';
+        } catch (_) {}
+      }
       if (mounted) setState(() => _styleProbeError = detail);
     } catch (e) {
-      if (mounted) setState(() => _styleProbeError = e.toString());
+      if (mounted) setState(() => _styleProbeError = 'Request failed: $e');
     }
   }
 
   void _onMapCreated(MapLibreMapController controller) {
     _rawController = controller;
     _controller = MapboxMapController(controller);
+    // Diagnostic-only: proves the native MapLibre platform view actually
+    // came up at all (separate question from whether the style/tiles it
+    // then tries to load succeed).
+    if (mounted) setState(() => _nativeViewCreated = true);
   }
 
   Future<void> _onStyleLoaded() async {
@@ -95,6 +99,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // for a light/dark theme change, see build()) wipes every source
     // and layer MapLibre knows about, so sources must always be
     // re-added here rather than only on first load.
+    if (mounted) setState(() => _styleLoadedFired = true);
     await _controller?.initializeSources();
     if (!mounted) return;
     setState(() => _stylesReady = true);
@@ -186,10 +191,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
 
-          // Diagnostic-only banner (see _probeStyleUrl): shows exactly
-          // what Mapbox said when asked for the style, since a bad
-          // token otherwise fails completely silently.
-          if (AppConfig.hasMapKey && _styleProbeError != null)
+          // Diagnostic-only banner: shows three independent signals so
+          // we can tell apart "native map view never came up" (iOS
+          // platform-view / signing / native-lib problem) from "view
+          // came up but the style/tiles never loaded" (token/network
+          // problem) from "everything fired, map should be visible".
+          if (AppConfig.hasMapKey)
             Positioned(
               top: 56,
               left: 16,
@@ -201,7 +208,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 16, vertical: 12),
                   child: Text(
-                    'Mapbox rejected the style request:\n$_styleProbeError',
+                    'Native map view created: $_nativeViewCreated\n'
+                    'onStyleLoaded fired: $_styleLoadedFired\n'
+                    'Style HTTP probe: ${_styleProbeError ?? "pending…"}\n'
+                    'Token: ${AppConfig.mapApiKey.isEmpty ? "EMPTY" : AppConfig.mapApiKey.substring(0, AppConfig.mapApiKey.length < 6 ? AppConfig.mapApiKey.length : 6)}… (len ${AppConfig.mapApiKey.length})',
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
