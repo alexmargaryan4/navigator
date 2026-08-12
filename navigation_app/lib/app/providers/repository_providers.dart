@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/networking/api_client.dart';
 import '../../core/permissions/location_permission_handler.dart';
 import '../../core/location/location_tracker.dart';
+import '../../data/datasources/geoapify_search_datasource.dart';
 import '../../data/datasources/groq_ai_datasource.dart';
 import '../../data/datasources/mapbox_parking_datasource.dart';
 import '../../data/datasources/mapbox_routing_datasource.dart';
@@ -11,8 +12,10 @@ import '../../data/repositories/parking_repository_impl.dart';
 import '../../data/repositories/routing_repository_impl.dart';
 import '../../data/repositories/search_repository_impl.dart';
 import '../../data/repositories/traffic_repository_impl.dart';
+import '../../data/services/hybrid_search_service.dart';
 import '../../domain/repositories/parking_repository.dart';
 import '../../domain/repositories/routing_repository.dart';
+import '../../domain/repositories/search_provider.dart';
 import '../../domain/repositories/search_repository.dart';
 import '../../domain/repositories/traffic_repository.dart';
 import '../../services/ai/ai_navigation_service.dart';
@@ -35,6 +38,10 @@ final mapboxSearchDataSourceProvider = Provider<MapboxSearchDataSource>(
   (ref) => MapboxSearchDataSource(client: ref.watch(apiClientProvider)),
 );
 
+final geoapifySearchDataSourceProvider = Provider<GeoapifySearchDataSource>(
+  (ref) => GeoapifySearchDataSource(client: ref.watch(apiClientProvider)),
+);
+
 final mapboxRoutingDataSourceProvider = Provider<MapboxRoutingDataSource>(
   (ref) => MapboxRoutingDataSource(client: ref.watch(apiClientProvider)),
 );
@@ -48,11 +55,40 @@ final groqAiDataSourceProvider = Provider<GroqAiDataSource>(
 );
 
 // ---------------------------------------------------------------------------
+// Search providers (Mapbox + Geoapify, adapted to the common
+// SearchProvider contract) and the hybrid service that fans queries out
+// to both in parallel and merges/dedupes/ranks the combined results.
+// See HybridSearchService for the merge/dedup/ranking rules, and
+// SearchProvider for how a future third provider would plug in here
+// without touching anything else.
+// ---------------------------------------------------------------------------
+
+final mapboxSearchProviderProvider = Provider<SearchProvider>(
+  (ref) => MapboxSearchProvider(ref.watch(mapboxSearchDataSourceProvider)),
+);
+
+final geoapifySearchProviderProvider = Provider<SearchProvider>(
+  (ref) => GeoapifySearchProvider(ref.watch(geoapifySearchDataSourceProvider)),
+);
+
+final hybridSearchServiceProvider = Provider<HybridSearchService>(
+  (ref) => HybridSearchService(
+    providers: [
+      ref.watch(mapboxSearchProviderProvider),
+      ref.watch(geoapifySearchProviderProvider),
+    ],
+  ),
+);
+
+// ---------------------------------------------------------------------------
 // Repositories
 // ---------------------------------------------------------------------------
 
 final searchRepositoryProvider = Provider<SearchRepositoryImpl>(
-  (ref) => SearchRepositoryImpl(ref.watch(mapboxSearchDataSourceProvider)),
+  (ref) => SearchRepositoryImpl(
+    ref.watch(hybridSearchServiceProvider),
+    mapboxDataSource: ref.watch(mapboxSearchDataSourceProvider),
+  ),
 );
 
 /// Exposed as the domain interface for consumers that only need the
