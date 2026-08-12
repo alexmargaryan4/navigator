@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Default app name shown on the home screen launcher / app switcher.
+         Used whenever the device language is neither Russian (values-ru)
+         nor Armenian (values-hy) — this covers English and every other
+         language, per the product requirement that the app name (and
+         interface) falls back to English otherwise. -->
+    <string name="app_name">NavAI</string>
+</resources>
