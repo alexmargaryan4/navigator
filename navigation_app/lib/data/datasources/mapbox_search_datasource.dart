@@ -60,7 +60,8 @@ class MapboxSearchDataSource {
     if (!AppConfig.hasMapKey) {
       return const Result.err(ConfigurationFailure());
     }
-    final uri = Uri.parse('$_searchBoxBase/retrieve/$mapboxId').replace(
+    final encodedId = Uri.encodeComponent(mapboxId);
+    final uri = Uri.parse('$_searchBoxBase/retrieve/$encodedId').replace(
       queryParameters: {
         'access_token': AppConfig.mapApiKey,
         'session_token': _sessionToken,
