@@ -38,6 +38,12 @@ class AppTheme {
             error: colors.error,
           );
 
+    // Every input border below shares one radius and one hairline width
+    // with its own fill color, so the border always reads as "drawn for
+    // this field" instead of a default Material outline that happens to
+    // overlap a differently-rounded container.
+    final inputRadius = BorderRadius.circular(_radiusMd);
+
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -52,9 +58,19 @@ class AppTheme {
           elevation: 0,
           backgroundColor: colors.accent,
           foregroundColor: colors.onAccent,
+          disabledBackgroundColor: colors.accent.withOpacity(0.35),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(_radiusMd),
+            side: BorderSide(color: Colors.white.withOpacity(0.14), width: 1),
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: colors.accent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(_radiusSm),
           ),
         ),
       ),
@@ -63,17 +79,35 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(_radiusLg),
+          side: BorderSide(color: colors.divider, width: 1),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: colors.surface,
+        fillColor: colors.inputFill,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_radiusLg),
-          borderSide: BorderSide.none,
+          borderRadius: inputRadius,
+          borderSide: BorderSide(color: colors.inputBorder, width: 1.3),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: inputRadius,
+          borderSide: BorderSide(color: colors.inputBorder, width: 1.3),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: inputRadius,
+          borderSide: BorderSide(color: colors.inputBorderFocused, width: 1.8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: inputRadius,
+          borderSide: BorderSide(color: colors.error, width: 1.4),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: inputRadius,
+          borderSide: BorderSide(color: colors.error, width: 1.8),
+        ),
+        hintStyle: TextStyle(color: colors.onSurfaceMuted),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colors.surfaceElevated,

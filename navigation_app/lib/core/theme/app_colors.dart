@@ -18,6 +18,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.onSurface,
     required this.onSurfaceMuted,
     required this.accent,
+    required this.accentSecondary,
     required this.onAccent,
     required this.divider,
     required this.success,
@@ -26,6 +27,10 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.severe,
     required this.error,
     required this.shadow,
+    required this.accentShadow,
+    required this.inputFill,
+    required this.inputBorder,
+    required this.inputBorderFocused,
   });
 
   final Color background;
@@ -35,7 +40,16 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color glassBorder;
   final Color onSurface;
   final Color onSurfaceMuted;
+
+  /// Primary brand accent — the deep, calm blue end of the brand gradient.
   final Color accent;
+
+  /// Secondary brand accent — the teal end of the brand gradient. Used
+  /// together with [accent] to build [AppGradients.brand] rather than as
+  /// a flat color on its own, so the app reads as "one tone" instead of
+  /// two competing colors.
+  final Color accentSecondary;
+
   final Color onAccent;
   final Color divider;
 
@@ -49,6 +63,18 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color error;
   final Color shadow;
 
+  /// Soft, tinted shadow used under brand-gradient surfaces (primary
+  /// buttons, FAB, splash mark) so elevation reads as "glow", not a
+  /// generic gray drop shadow that looks pasted on top of the gradient.
+  final Color accentShadow;
+
+  /// Dedicated tokens for text fields / search bars so borders are
+  /// deliberate hairlines that match the field's own radius, instead of
+  /// inheriting a mismatched default border.
+  final Color inputFill;
+  final Color inputBorder;
+  final Color inputBorderFocused;
+
   @override
   AppColors copyWith({
     Color? background,
@@ -59,6 +85,7 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? onSurface,
     Color? onSurfaceMuted,
     Color? accent,
+    Color? accentSecondary,
     Color? onAccent,
     Color? divider,
     Color? success,
@@ -67,6 +94,10 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? severe,
     Color? error,
     Color? shadow,
+    Color? accentShadow,
+    Color? inputFill,
+    Color? inputBorder,
+    Color? inputBorderFocused,
   }) {
     return AppColors(
       background: background ?? this.background,
@@ -77,6 +108,7 @@ class AppColors extends ThemeExtension<AppColors> {
       onSurface: onSurface ?? this.onSurface,
       onSurfaceMuted: onSurfaceMuted ?? this.onSurfaceMuted,
       accent: accent ?? this.accent,
+      accentSecondary: accentSecondary ?? this.accentSecondary,
       onAccent: onAccent ?? this.onAccent,
       divider: divider ?? this.divider,
       success: success ?? this.success,
@@ -85,6 +117,10 @@ class AppColors extends ThemeExtension<AppColors> {
       severe: severe ?? this.severe,
       error: error ?? this.error,
       shadow: shadow ?? this.shadow,
+      accentShadow: accentShadow ?? this.accentShadow,
+      inputFill: inputFill ?? this.inputFill,
+      inputBorder: inputBorder ?? this.inputBorder,
+      inputBorderFocused: inputBorderFocused ?? this.inputBorderFocused,
     );
   }
 
@@ -100,6 +136,7 @@ class AppColors extends ThemeExtension<AppColors> {
       onSurface: Color.lerp(onSurface, other.onSurface, t)!,
       onSurfaceMuted: Color.lerp(onSurfaceMuted, other.onSurfaceMuted, t)!,
       accent: Color.lerp(accent, other.accent, t)!,
+      accentSecondary: Color.lerp(accentSecondary, other.accentSecondary, t)!,
       onAccent: Color.lerp(onAccent, other.onAccent, t)!,
       divider: Color.lerp(divider, other.divider, t)!,
       success: Color.lerp(success, other.success, t)!,
@@ -108,44 +145,87 @@ class AppColors extends ThemeExtension<AppColors> {
       severe: Color.lerp(severe, other.severe, t)!,
       error: Color.lerp(error, other.error, t)!,
       shadow: Color.lerp(shadow, other.shadow, t)!,
+      accentShadow: Color.lerp(accentShadow, other.accentShadow, t)!,
+      inputFill: Color.lerp(inputFill, other.inputFill, t)!,
+      inputBorder: Color.lerp(inputBorder, other.inputBorder, t)!,
+      inputBorderFocused:
+          Color.lerp(inputBorderFocused, other.inputBorderFocused, t)!,
     );
   }
 
+  // Brand palette: a restrained blue → teal tone, deliberately desaturated
+  // relative to a "loud" ride-hailing yellow so it stays easy on the eyes
+  // over long navigation sessions, while still reading as one confident,
+  // single-tone brand color rather than two separate accents fighting for
+  // attention (see AppGradients.brand for how the two are combined).
   static const light = AppColors(
-    background: Color(0xFFF5F6F8),
+    background: Color(0xFFF3F6F8),
     surface: Color(0xFFFFFFFF),
     surfaceElevated: Color(0xFFFFFFFF),
-    glassSurface: Color(0xCCFFFFFF),
-    glassBorder: Color(0x33FFFFFF),
-    onSurface: Color(0xFF14171F),
-    onSurfaceMuted: Color(0xFF6B7280),
-    accent: Color(0xFF2563EB),
+    glassSurface: Color(0xD9FFFFFF),
+    glassBorder: Color(0x1F0E7CA8),
+    onSurface: Color(0xFF12202B),
+    onSurfaceMuted: Color(0xFF5C7080),
+    accent: Color(0xFF1768AC),
+    accentSecondary: Color(0xFF12B8A6),
     onAccent: Color(0xFFFFFFFF),
-    divider: Color(0xFFE5E7EB),
-    success: Color(0xFF22C55E),
-    warning: Color(0xFFF5B301),
-    heavy: Color(0xFFF97316),
-    severe: Color(0xFFEF4444),
-    error: Color(0xFFDC2626),
-    shadow: Color(0x1A000000),
+    divider: Color(0xFFE2E8ED),
+    success: Color(0xFF1FAE7A),
+    warning: Color(0xFFE0A319),
+    heavy: Color(0xFFE07A2E),
+    severe: Color(0xFFDD4C4C),
+    error: Color(0xFFD64545),
+    shadow: Color(0x141B2B3A),
+    accentShadow: Color(0x3D1768AC),
+    inputFill: Color(0xFFFFFFFF),
+    inputBorder: Color(0xFFDCE4E9),
+    inputBorderFocused: Color(0xFF1996A6),
   );
 
   static const dark = AppColors(
-    background: Color(0xFF0B0D12),
-    surface: Color(0xFF14171F),
-    surfaceElevated: Color(0xFF1B1F29),
-    glassSurface: Color(0x992A2E38),
-    glassBorder: Color(0x33FFFFFF),
-    onSurface: Color(0xFFF3F4F6),
-    onSurfaceMuted: Color(0xFF9AA1AC),
-    accent: Color(0xFF4F8DFF),
-    onAccent: Color(0xFF0B0D12),
-    divider: Color(0xFF262B36),
-    success: Color(0xFF34D399),
-    warning: Color(0xFFFBBF24),
-    heavy: Color(0xFFFB923C),
-    severe: Color(0xFFF87171),
-    error: Color(0xFFF87171),
-    shadow: Color(0x40000000),
+    background: Color(0xFF08131A),
+    surface: Color(0xFF101E27),
+    surfaceElevated: Color(0xFF162836),
+    glassSurface: Color(0xB3122430),
+    glassBorder: Color(0x2645C2C9),
+    onSurface: Color(0xFFEAF2F5),
+    onSurfaceMuted: Color(0xFF8CA3B0),
+    accent: Color(0xFF3E9BE0),
+    accentSecondary: Color(0xFF2FD9C4),
+    onAccent: Color(0xFF06141B),
+    divider: Color(0xFF203444),
+    success: Color(0xFF37C98F),
+    warning: Color(0xFFF0BA3E),
+    heavy: Color(0xFFF08F4E),
+    severe: Color(0xFFEB6767),
+    error: Color(0xFFEB6767),
+    shadow: Color(0x59000B12),
+    accentShadow: Color(0x522FD9C4),
+    inputFill: Color(0xFF122530),
+    inputBorder: Color(0xFF24404F),
+    inputBorderFocused: Color(0xFF2FD9C4),
   );
+}
+
+/// Brand gradients built from [AppColors.accent] → [AppColors.accentSecondary].
+///
+/// Centralized here (rather than inlined at each call site) so every
+/// "hero" surface — primary buttons, the FAB, the splash mark — shares
+/// the exact same angle and stops and therefore reads as one deliberate
+/// tone across the app instead of visually-distinct gradients.
+abstract final class AppGradients {
+  static LinearGradient brand(AppColors colors) => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [colors.accent, colors.accentSecondary],
+      );
+
+  static LinearGradient brandSubtle(AppColors colors) => LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          colors.accent.withOpacity(0.13),
+          colors.accentSecondary.withOpacity(0.13),
+        ],
+      );
 }
