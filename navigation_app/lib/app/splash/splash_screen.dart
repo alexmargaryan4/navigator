@@ -119,7 +119,7 @@ class _SplashScreenState extends State<SplashScreen>
                 const SizedBox(height: 28),
                 AnimatedBuilder(
                   animation: _entranceController,
-                  builder: (context, _) => Opacity(
+                  builder: (context, child) => Opacity(
                     opacity: _wordmarkFade.value,
                     child: Transform.translate(
                       offset: Offset(0, (1 - _wordmarkSlide.value) * 14),
