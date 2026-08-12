@@ -5,7 +5,7 @@ import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/parking_spot.dart';
 import '../../../domain/entities/place.dart';
-import '../../../shared/widgets/buttons/pressable.dart';
+import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
 import '../../../shared/widgets/loading/loading_indicators.dart';
 import '../../../shared/widgets/motion/staggered_fade_in.dart';
@@ -45,16 +45,12 @@ class ParkingScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(12, 8, 20, 8),
               child: Row(
                 children: [
-                  Pressable(
+                  AppIconButton(
+                    icon: Icons.arrow_back_rounded,
                     onTap: () => Navigator.of(context).maybePop(),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Icon(Icons.arrow_back_rounded,
-                          color: colors.onSurface, size: 22),
-                    ),
+                    size: 40,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 12),
                   Text(
                     'Nearby parking',
                     style: TextStyle(
@@ -64,15 +60,11 @@ class ParkingScreen extends ConsumerWidget {
                     ),
                   ),
                   const Spacer(),
-                  Pressable(
+                  AppIconButton(
+                    icon: Icons.refresh_rounded,
                     onTap: () =>
                         ref.read(parkingControllerProvider.notifier).refresh(),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Icon(Icons.refresh_rounded,
-                          color: colors.onSurfaceMuted, size: 20),
-                    ),
+                    size: 40,
                   ),
                 ],
               ),
@@ -112,10 +104,12 @@ class ParkingScreen extends ConsumerWidget {
                 style: TextStyle(color: colors.onSurfaceMuted),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () =>
+              AppButton(
+                label: 'Try again',
+                icon: Icons.refresh_rounded,
+                expand: false,
+                onTap: () =>
                     ref.read(parkingControllerProvider.notifier).refresh(),
-                child: const Text('Try again'),
               ),
             ],
           ),
@@ -185,9 +179,18 @@ class _ParkingCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: colors.accent.withOpacity(0.12),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppGradients.brandSubtle(colors),
+                border: Border.all(
+                  color: colors.accent.withOpacity(0.22),
+                  width: 1,
+                ),
+              ),
+              alignment: Alignment.center,
               child: Icon(Icons.local_parking_rounded,
                   color: colors.accent, size: 20),
             ),
@@ -242,18 +245,11 @@ class _ParkingCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Pressable(
+            AppIconButton(
+              icon: Icons.navigation_rounded,
               onTap: onNavigate,
-              borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: colors.accent,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Icon(Icons.navigation_rounded,
-                    color: colors.onAccent, size: 18),
-              ),
+              filled: true,
+              size: 40,
             ),
           ],
         ),
