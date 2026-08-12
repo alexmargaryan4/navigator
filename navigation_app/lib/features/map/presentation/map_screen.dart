@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../app/providers/location_providers.dart';
@@ -46,12 +47,42 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _searchOpen = false;
   Brightness? _mapStyleBrightness;
 
+  // Diagnostic-only: maplibre_gl swallows a rejected style load (bad/
+  // wrong-type Mapbox token, exhausted quota, etc.) and just renders a
+  // blank map with no callback at all — see the note on the banner
+  // below. This does one throwaway GET against the exact style URL the
+  // MapLibreMap widget is pointed at, purely to surface *why* Mapbox
+  // rejected it, if it did.
+  String? _styleProbeError;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(locationPermissionProvider.notifier).request();
     });
+    _probeStyleUrl();
+  }
+
+  Future<void> _probeStyleUrl() async {
+    if (!AppConfig.hasMapKey) return;
+    try {
+      final response = await http
+          .get(Uri.parse(MapStyle.light))
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode == 200) {
+        if (mounted) setState(() => _styleProbeError = null);
+        return;
+      }
+      String detail = 'HTTP ${response.statusCode}';
+      try {
+        final body = response.body;
+        if (body.isNotEmpty) detail += ': $body';
+      } catch (_) {}
+      if (mounted) setState(() => _styleProbeError = detail);
+    } catch (e) {
+      if (mounted) setState(() => _styleProbeError = e.toString());
+    }
   }
 
   void _onMapCreated(MapLibreMapController controller) {
@@ -150,6 +181,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     'Map key missing: this build was compiled without '
                     'MAP_API_KEY, so map tiles cannot load.',
                     style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ),
+            ),
+
+          // Diagnostic-only banner (see _probeStyleUrl): shows exactly
+          // what Mapbox said when asked for the style, since a bad
+          // token otherwise fails completely silently.
+          if (AppConfig.hasMapKey && _styleProbeError != null)
+            Positioned(
+              top: 56,
+              left: 16,
+              right: 16,
+              child: Material(
+                color: Colors.red.shade700,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  child: Text(
+                    'Mapbox rejected the style request:\n$_styleProbeError',
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
               ),
