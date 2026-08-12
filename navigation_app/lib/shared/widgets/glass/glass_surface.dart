@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/animation/motion_tokens.dart';
@@ -46,36 +48,41 @@ class GlassSurface extends StatelessWidget {
     final motion = MotionTokens.current();
     final spec = motion.overlayFade;
 
-    // Single decoration on a single Container — fill, border, and
-    // shadow all painted together in one pass, exactly like
-    // AppIconButton, so the edge is always crisp and even on every
-    // side (see the "floating border" note this replaced).
-    return AnimatedContainer(
-      duration: spec.duration,
-      curve: spec.curve,
-      padding: padding ?? const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: borderRadius,
-        color: visible
-            ? colors.onSurface.withOpacity(0.06)
-            : colors.onSurface.withOpacity(0),
-        border: Border.all(
-          color: colors.divider,
-          width: 1,
+    return ClipRRect(
+      borderRadius: borderRadius,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(
+          sigmaX: 2,
+          sigmaY: 2,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: colors.shadow,
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+        child: AnimatedContainer(
+          duration: spec.duration,
+          curve: spec.curve,
+          padding: padding ?? const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            color: visible
+                ? colors.onSurface.withOpacity(0.06)
+                : colors.onSurface.withOpacity(0),
+            border: Border.all(
+              color: colors.divider,
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colors.shadow,
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: AnimatedOpacity(
-        opacity: visible ? 1 : 0,
-        duration: spec.duration,
-        curve: spec.curve,
-        child: child,
+          child: AnimatedOpacity(
+            opacity: visible ? 1 : 0,
+            duration: spec.duration,
+            curve: spec.curve,
+            child: child,
+          ),
+        ),
       ),
     );
   }
