@@ -8,6 +8,7 @@ import '../../domain/entities/place.dart';
 import '../../domain/entities/route.dart';
 import 'geojson_builder.dart';
 import 'map_style.dart';
+import 'map_style_resolver.dart';
 
 /// A thin, app-owned wrapper around [MapLibreMapController].
 ///
@@ -288,13 +289,20 @@ class MapboxMapController {
 
   /// Toggles Mapbox's live traffic vector-tile layer directly on the
   /// base map (spec §42) — independent of any calculated route.
+  ///
+  /// Uses direct HTTPS tile URLs (via [MapStyleResolver.resolveTileUrls])
+  /// rather than the raw `mapbox://` source URL, since maplibre_gl
+  /// (MapLibre Native) doesn't resolve that scheme — see the note on
+  /// [MapStyleResolver] for the full explanation.
   Future<void> setTrafficVisible(bool visible) async {
     _trafficVisible = visible;
     try {
       if (visible) {
+        final tileUrls =
+            await MapStyleResolver.resolveTileUrls(MapStyle.trafficSourceUrl);
         await _map.addSource(
           MapStyle.trafficSourceId,
-          const VectorSourceProperties(url: MapStyle.trafficSourceUrl),
+          VectorSourceProperties(tiles: tileUrls),
         );
         await _map.addLineLayer(
           MapStyle.trafficSourceId,
