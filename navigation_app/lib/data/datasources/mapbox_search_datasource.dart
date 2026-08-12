@@ -4,6 +4,7 @@ import '../../core/errors/result.dart';
 import '../../core/networking/api_client.dart';
 import '../../domain/entities/geo_point.dart';
 import '../../domain/entities/place.dart';
+import '../../domain/repositories/search_provider.dart';
 import '../models/place_model.dart';
 
 /// Talks directly to Mapbox's Search Box API (autocomplete + retrieve)
@@ -140,4 +141,41 @@ class MapboxSearchDataSource {
   /// pricing model. Regenerated each time the app restarts.
   static final String _sessionToken =
       DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+}
+
+/// Adapts [MapboxSearchDataSource] to the provider-agnostic
+/// [SearchProvider] contract so [HybridSearchService] can run it
+/// side-by-side with any other provider (Geoapify, and future ones)
+/// without knowing anything Mapbox-specific.
+///
+/// Mapbox `/suggest` results don't carry coordinates — resolving them is
+/// comparatively expensive (one `/retrieve` call per suggestion) and is
+/// only actually needed for the single result the user taps, not the
+/// whole list. So this provider intentionally surfaces suggestions with
+/// [Place.needsCoordinateResolution] set to true and a `(0, 0)`
+/// placeholder location; [HybridSearchService] and downstream ranking
+/// account for that (see `HybridSearchService._rankingLocation`), and
+/// the UI layer resolves the real coordinates via
+/// `SearchRepositoryImpl.resolveSelection` only for the picked result.
+class MapboxSearchProvider implements SearchProvider {
+  MapboxSearchProvider(this._dataSource);
+
+  final MapboxSearchDataSource _dataSource;
+
+  @override
+  String get name => 'mapbox';
+
+  @override
+  Future<Result<List<Place>>> search(
+    String query, {
+    GeoPoint? proximity,
+    int limit = 8,
+  }) {
+    return _dataSource.suggest(query, proximity: proximity, limit: limit);
+  }
+
+  @override
+  Future<Result<Place>> reverseGeocode(GeoPoint point) {
+    return _dataSource.reverseGeocode(point);
+  }
 }
