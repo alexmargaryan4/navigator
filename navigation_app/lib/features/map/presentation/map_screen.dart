@@ -74,7 +74,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(locationPermissionProvider.notifier).request();
     });
-    _resolveStyle(MapStyle.light);
+    // Resolve the style that actually matches the device's current
+    // brightness on cold start, not always the light one — `Theme.of
+    // (context)` isn't safely readable yet in initState, but the
+    // platform brightness is, and it's what MaterialApp's `themeMode:
+    // ThemeMode.system` will resolve to on the very first build anyway.
+    // Previously this always kicked off MapStyle.light regardless of
+    // the device's theme, so a cold start in dark mode never resolved
+    // MapStyle.dark until the (change-only) brightness listener in
+    // build() fired — which never happens on a start that's already
+    // dark, leaving the map on a light basemap under dark UI chrome
+    // indefinitely (washing out text/icons that assume a dark surface
+    // underneath, e.g. the top search bar and menu button).
+    final startBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    _mapStyleBrightness = startBrightness;
+    _resolveStyle(
+      startBrightness == Brightness.dark ? MapStyle.dark : MapStyle.light,
+    );
   }
 
   Future<void> _resolveStyle(String mapboxStyleUrl) async {
@@ -126,7 +143,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     });
 
     final brightness = Theme.of(context).brightness;
-    _mapStyleBrightness ??= brightness;
+    // initState() already seeds _mapStyleBrightness from the platform's
+    // brightness so the correct style starts resolving immediately (see
+    // initState doc comment). That matches Theme.of(context).brightness
+    // whenever themeMode is ThemeMode.system, but if the user has
+    // explicitly overridden the in-app theme (see themeModeProvider) so
+    // it disagrees with the platform on this very first build, reconcile
+    // here too — otherwise that mismatch would only self-correct on the
+    // *next* brightness change, not the current mismatched state.
+    if (_mapStyleBrightness != brightness) {
+      _mapStyleBrightness = brightness;
+      _resolveStyle(
+        brightness == Brightness.dark ? MapStyle.dark : MapStyle.light,
+      );
+    }
 
     ref.listen(themeBrightnessProvider(context), (previous, next) {
       // maplibre_gl has no live "recolor" API for a loaded style — the
