@@ -7,6 +7,7 @@ import '../../../domain/entities/travel_mode.dart';
 import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
+import '../../../shared/widgets/layout/measure_size.dart';
 import '../../../shared/widgets/loading/loading_indicators.dart';
 import '../../../shared/widgets/motion/staggered_fade_in.dart';
 import '../application/trip_state.dart';
@@ -28,6 +29,7 @@ class RoutePreviewSheet extends StatelessWidget {
     required this.onSetMode,
     required this.onStartNavigation,
     required this.onCancel,
+    this.onMeasured,
   });
 
   final TripState tripState;
@@ -35,6 +37,12 @@ class RoutePreviewSheet extends StatelessWidget {
   final ValueChanged<TravelMode> onSetMode;
   final VoidCallback onStartNavigation;
   final VoidCallback onCancel;
+
+  /// Reports this sheet's actual rendered height (including its own
+  /// bottom padding) after every layout pass, so callers positioning
+  /// other floating UI above it (e.g. the map's right-side controls)
+  /// can track its real size instead of guessing a fixed offset.
+  final ValueChanged<double>? onMeasured;
 
   @override
   Widget build(BuildContext context) {
@@ -55,89 +63,92 @@ class RoutePreviewSheet extends StatelessWidget {
             child: child,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-          child: GlassSurface(
-            borderRadius: BorderRadius.circular(28),
-            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        tripState.destination?.name ?? 'Route',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: colors.onSurface,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
+        child: MeasureSize(
+          onChange: (size) => onMeasured?.call(size.height),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+            child: GlassSurface(
+              borderRadius: BorderRadius.circular(28),
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          tripState.destination?.name ?? 'Route',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: colors.onSurface,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
+                      AppIconButton(
+                        icon: Icons.close_rounded,
+                        onTap: onCancel,
+                        size: 34,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _ModeSelector(
+                    selected: tripState.mode,
+                    onSelect: onSetMode,
+                  ),
+                  const SizedBox(height: 14),
+                  if (tripState.isCalculatingRoute)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      child: ContextualLoadingIndicator(
+                        context_: LoadingContext.route,
+                      ),
+                    )
+                  else if (tripState.failure != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        tripState.failure!.message,
+                        style: TextStyle(color: colors.onSurfaceMuted),
+                      ),
+                    )
+                  else ...[
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 190),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: tripState.routes.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (context, index) {
+                          final route = tripState.routes[index];
+                          final isSelected = route.id ==
+                              (tripState.selectedRoute?.id ?? route.id);
+                          return StaggeredFadeIn(
+                            index: index,
+                            child: _RouteCard(
+                              route: route,
+                              isSelected: isSelected,
+                              onTap: () => onSelectRoute(route.id),
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                    AppIconButton(
-                      icon: Icons.close_rounded,
-                      onTap: onCancel,
-                      size: 34,
+                    const SizedBox(height: 16),
+                    AppButton(
+                      label: 'Start Navigation',
+                      icon: Icons.navigation_rounded,
+                      onTap: tripState.selectedRoute == null
+                          ? null
+                          : onStartNavigation,
                     ),
                   ],
-                ),
-                const SizedBox(height: 14),
-                _ModeSelector(
-                  selected: tripState.mode,
-                  onSelect: onSetMode,
-                ),
-                const SizedBox(height: 14),
-                if (tripState.isCalculatingRoute)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    child: ContextualLoadingIndicator(
-                      context_: LoadingContext.route,
-                    ),
-                  )
-                else if (tripState.failure != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      tripState.failure!.message,
-                      style: TextStyle(color: colors.onSurfaceMuted),
-                    ),
-                  )
-                else ...[
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 190),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: tripState.routes.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final route = tripState.routes[index];
-                        final isSelected = route.id ==
-                            (tripState.selectedRoute?.id ?? route.id);
-                        return StaggeredFadeIn(
-                          index: index,
-                          child: _RouteCard(
-                            route: route,
-                            isSelected: isSelected,
-                            onTap: () => onSelectRoute(route.id),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  AppButton(
-                    label: 'Start Navigation',
-                    icon: Icons.navigation_rounded,
-                    onTap: tripState.selectedRoute == null
-                        ? null
-                        : onStartNavigation,
-                  ),
                 ],
-              ],
+              ),
             ),
           ),
         ),
