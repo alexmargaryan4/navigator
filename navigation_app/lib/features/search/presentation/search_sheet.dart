@@ -10,7 +10,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/geo_point.dart';
 import '../../../domain/entities/place.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
-import '../../../shared/widgets/glass/glass_surface.dart';
 import '../../../shared/widgets/loading/loading_indicators.dart';
 import '../../../shared/widgets/motion/staggered_fade_in.dart';
 import '../application/search_controller.dart';
@@ -43,6 +42,12 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
     // specifically to type, so don't make them tap again.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
+    });
+    // Repaints the field's border color/width when focus changes, so the
+    // focused state uses the theme's dedicated inputBorderFocused token
+    // instead of relying on the (removed) Material InputDecoration border.
+    _focusNode.addListener(() {
+      if (mounted) setState(() {});
     });
   }
 
@@ -125,8 +130,18 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: GlassSurface(
-                          borderRadius: BorderRadius.circular(20),
+                        child: AnimatedContainer(
+                          duration: motion.microInteraction.duration,
+                          decoration: BoxDecoration(
+                            color: colors.inputFill,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _focusNode.hasFocus
+                                  ? colors.inputBorderFocused
+                                  : colors.inputBorder,
+                              width: _focusNode.hasFocus ? 1.8 : 1.3,
+                            ),
+                          ),
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Row(
                             children: [
@@ -140,24 +155,34 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
                                   autofocus: true,
                                   style: TextStyle(color: colors.onSurface),
                                   decoration: InputDecoration(
+                                    isDense: true,
                                     border: InputBorder.none,
+                                    enabledBorder: InputBorder.none,
+                                    focusedBorder: InputBorder.none,
+                                    filled: false,
+                                    contentPadding:
+                                        const EdgeInsets.symmetric(vertical: 14),
                                     hintText:
                                         'Search for a place, address, city…',
                                     hintStyle:
                                         TextStyle(color: colors.onSurfaceMuted),
                                   ),
-                                  onChanged: (q) => ref
-                                      .read(searchControllerProvider.notifier)
-                                      .onQueryChanged(
-                                        q,
-                                        proximity: _proximity(lastKnown),
-                                      ),
+                                  onChanged: (q) {
+                                    setState(() {});
+                                    ref
+                                        .read(searchControllerProvider.notifier)
+                                        .onQueryChanged(
+                                          q,
+                                          proximity: _proximity(lastKnown),
+                                        );
+                                  },
                                 ),
                               ),
                               if (_controller.text.isNotEmpty)
                                 Pressable(
                                   onTap: () {
                                     _controller.clear();
+                                    setState(() {});
                                     ref
                                         .read(searchControllerProvider.notifier)
                                         .clear();
@@ -176,7 +201,7 @@ class _SearchSheetState extends ConsumerState<SearchSheet> {
                           'Cancel',
                           style: TextStyle(
                             color: colors.accent,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -292,10 +317,19 @@ class _SearchResultTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: colors.accent.withOpacity(0.12),
-              child: Icon(_icon, color: colors.accent, size: 18),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppGradients.brandSubtle(colors),
+                border: Border.all(
+                  color: colors.accent.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(_icon, color: colors.accent, size: 17),
             ),
             const SizedBox(width: 14),
             Expanded(

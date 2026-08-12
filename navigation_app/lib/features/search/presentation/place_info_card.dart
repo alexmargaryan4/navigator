@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/place.dart';
-import '../../../shared/widgets/buttons/pressable.dart';
+import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
-import '../../../shared/widgets/loading/loading_indicators.dart';
 
 /// Shown right after a destination is picked — before the user commits
 /// to calculating routes (product spec §20-21: destination marker and
@@ -63,9 +62,18 @@ class PlaceInfoCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: colors.accent.withOpacity(0.12),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppGradients.brandSubtle(colors),
+                    border: Border.all(
+                      color: colors.accent.withOpacity(0.22),
+                      width: 1,
+                    ),
+                  ),
+                  alignment: Alignment.center,
                   child: Icon(_categoryIcon, color: colors.accent, size: 20),
                 ),
                 const SizedBox(width: 14),
@@ -98,29 +106,19 @@ class PlaceInfoCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Pressable(
+                AppIconButton(
+                  icon: Icons.close_rounded,
                   onTap: onDismiss,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(6),
-                    child: Icon(Icons.close_rounded,
-                        color: colors.onSurfaceMuted, size: 20),
-                  ),
+                  size: 34,
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: isCalculating ? null : onStartRoute,
-                child: isCalculating
-                    ? const ContextualLoadingIndicator(
-                        context_: LoadingContext.route,
-                        compact: true,
-                      )
-                    : const Text('Start Route'),
-              ),
+            AppButton(
+              label: 'Start Route',
+              icon: Icons.directions_rounded,
+              loading: isCalculating,
+              onTap: isCalculating ? null : onStartRoute,
             ),
           ],
         ),
