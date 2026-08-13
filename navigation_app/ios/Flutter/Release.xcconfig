@@ -1,1 +1,12 @@
 #include "Generated.xcconfig"
+
+// CI builds an unsigned .ipa for testing only (no Apple Developer account
+// configured). This disables code signing entirely for Release builds so
+// `flutter build ios --release --no-codesign` succeeds without a
+// Development Team / Provisioning Profile.
+CODE_SIGNING_ALLOWED = NO
+CODE_SIGNING_REQUIRED = NO
+CODE_SIGN_IDENTITY = 
+CODE_SIGN_STYLE = Manual
+DEVELOPMENT_TEAM = 
+PROVISIONING_PROFILE_SPECIFIER = 
