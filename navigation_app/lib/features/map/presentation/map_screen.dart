@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
@@ -6,9 +7,11 @@ import '../../../app/providers/location_providers.dart';
 import '../../../app/providers/repository_providers.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/config/app_config.dart';
+import '../../../core/location/location_tracker.dart';
 import '../../../core/permissions/location_permission_handler.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/geo_point.dart';
+import '../../../domain/entities/nav_warning.dart';
 import '../../../domain/entities/place.dart';
 import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
@@ -21,6 +24,9 @@ import '../../navigation/application/trip_state.dart';
 import '../../navigation/presentation/navigation_hud.dart';
 import '../../navigation/presentation/route_preview_sheet.dart';
 import '../../parking/presentation/parking_screen.dart';
+import '../../favorite_routes/presentation/save_favorite_route_dialog.dart';
+import '../../saved_places/application/saved_places_controller.dart';
+import '../../saved_places/presentation/save_place_dialog.dart';
 import '../../search/presentation/place_info_card.dart';
 import '../../search/presentation/search_sheet.dart';
 import '../../settings/presentation/settings_screen.dart';
@@ -141,6 +147,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     ref.listen(tripControllerProvider, (previous, next) {
       _reactToTripChange(previous, next);
     });
+
+    // Frame-to-frame camera follow while actively navigating (product
+    // spec «3D-навигация»): every real GPS sample re-centers, re-tilts,
+    // and re-bears the camera on the user, with a closer zoom whenever
+    // a maneuver is close ahead. Deliberately a *separate* stream
+    // listener from TripController's own internal GPS subscription
+    // (which only drives trip progress/ETA/warnings) — the camera is a
+    // map-screen presentation concern, not trip state, and this way a
+    // camera-only failure can never affect trip progress or vice versa.
+    if (tripState.isActive) {
+      ref.listen(navigationLocationStreamProvider, (previous, next) {
+        final sample = next.valueOrNull;
+        if (sample == null) return;
+        _followDuringNavigation(sample, tripState);
+      });
+    }
 
     final brightness = Theme.of(context).brightness;
     // initState() already seeds _mapStyleBrightness from the platform's
@@ -292,6 +314,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ref.read(tripControllerProvider.notifier).calculateRoutes(),
                 onDismiss: () =>
                     ref.read(tripControllerProvider.notifier).clearDestination(),
+                onSave: () =>
+                    showSavePlaceDialog(context, ref, tripState.destination!),
               ),
             ),
 
@@ -312,6 +336,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   setState(() => _routeSheetHeight = height);
                 }
               },
+              onAddStop: _openAddStopSearch,
+              onRemoveStop: (stopId) =>
+                  ref.read(tripControllerProvider.notifier).removeStop(stopId),
+              onReorderStops: (oldIndex, newIndex) => ref
+                  .read(tripControllerProvider.notifier)
+                  .reorderStops(oldIndex, newIndex),
+              onSaveFavorite: () => _openSaveFavoriteDialog(tripState),
             ),
 
           // Active navigation HUD.
@@ -348,6 +379,41 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ],
       ),
     );
+  }
+
+  /// Distance ahead of a maneuver at which the camera starts easing
+  /// into its closer "approaching a turn" framing (product spec
+  /// «плавное приближение перед поворотами») — matches the nearest
+  /// lead distance used for the upcoming-turn/complex-intersection/
+  /// exit warning cards, so the camera change and the warning card
+  /// appear together rather than at two different, unrelated moments.
+  static const double _maneuverZoomLeadMeters = 400;
+
+  void _followDuringNavigation(LocationSample sample, TripState tripState) {
+    if (_controller == null || !_stylesReady || !tripState.isFollowingUser) {
+      return;
+    }
+
+    final point = GeoPoint(latitude: sample.latitude, longitude: sample.longitude);
+    final bearing = ref.read(tripControllerProvider.notifier).lastBearing;
+
+    // A real turn/complex-intersection/exit warning already carries the
+    // real distance to that maneuver (see TripController._buildWarnings)
+    // — reuse it rather than re-deriving a second distance figure, so
+    // the camera and the warning card always agree on "how far ahead".
+    final maneuverWarning = tripState.activeWarnings
+        .where((w) =>
+            w.type == NavWarningType.upcomingTurn ||
+            w.type == NavWarningType.complexIntersection ||
+            w.type == NavWarningType.upcomingExit)
+        .firstOrNull;
+
+    final proximity = maneuverWarning == null
+        ? 0.0
+        : (1 - (maneuverWarning.distanceMeters / _maneuverZoomLeadMeters))
+            .clamp(0.0, 1.0);
+
+    _controller!.followUser(point, bearing: bearing, maneuverProximity: proximity);
   }
 
   void _reactToTripChange(TripState? previous, TripState next) async {
@@ -442,6 +508,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         ref.read(tripControllerProvider.notifier).selectDestination(selected);
       }
     });
+  }
+
+  /// Opens search to append a new intermediate stop (product spec
+  /// "добавлять остановки") rather than replace the destination — the
+  /// result still goes through the same real geocoding/resolve pipeline
+  /// as a normal destination pick, it's only routed differently once
+  /// selected.
+  void _openAddStopSearch() {
+    showModalBottomSheet<Place>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const SearchSheet(),
+    ).then((selected) {
+      if (selected != null) {
+        ref.read(tripControllerProvider.notifier).addStop(selected);
+      }
+    });
+  }
+
+  Future<void> _openSaveFavoriteDialog(TripState tripState) async {
+    final destination = tripState.destination;
+    if (destination == null) return;
+    final last = await ref.read(lastKnownLocationProvider.future);
+    if (last == null || !mounted) return;
+    final origin = Place(
+      id: 'origin_${last.latitude}_${last.longitude}',
+      name: 'Start',
+      address: '',
+      location: GeoPoint(latitude: last.latitude, longitude: last.longitude),
+      category: PlaceCategory.other,
+    );
+    if (!mounted) return;
+    await showSaveFavoriteRouteDialog(
+      context,
+      ref,
+      origin: origin,
+      destination: destination,
+      stops: tripState.stops,
+      mode: tripState.mode,
+    );
   }
 
   void _openAiSheet() {
