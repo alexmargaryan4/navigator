@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../app/providers/location_providers.dart';
+import '../../../app/providers/map_type_provider.dart';
 import '../../../app/providers/repository_providers.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/config/app_config.dart';
@@ -95,9 +96,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final startBrightness =
         WidgetsBinding.instance.platformDispatcher.platformBrightness;
     _mapStyleBrightness = startBrightness;
-    _resolveStyle(
+    // Reads the map-type provider directly (rather than via ref.watch,
+    // which isn't available yet this early) — its default is
+    // MapType.fallback (standard) until settings restores any saved
+    // choice, matching the pre-map-type-switcher behavior exactly on
+    // cold start.
+    _resolveStyle(_styleUrlFor(
+      ref.read(mapTypeProvider),
       startBrightness == Brightness.dark ? MapStyle.dark : MapStyle.light,
-    );
+    ));
+  }
+
+  /// Picks the Mapbox style URL for the current [MapType] + brightness.
+  /// Satellite has a single always-on look (real-world imagery doesn't
+  /// have a "dark mode"), so brightness only matters for [MapType.standard].
+  String _styleUrlFor(MapType mapType, String standardStyleUrl) {
+    switch (mapType) {
+      case MapType.standard:
+        return standardStyleUrl;
+      case MapType.satellite:
+        return MapStyle.satellite;
+    }
   }
 
   Future<void> _resolveStyle(String mapboxStyleUrl) async {
@@ -143,6 +162,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final colors = Theme.of(context).appColors;
     final permissionState = ref.watch(locationPermissionProvider);
     final tripState = ref.watch(tripControllerProvider);
+    final mapType = ref.watch(mapTypeProvider);
 
     ref.listen(tripControllerProvider, (previous, next) {
       _reactToTripChange(previous, next);
@@ -175,25 +195,45 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // *next* brightness change, not the current mismatched state.
     if (_mapStyleBrightness != brightness) {
       _mapStyleBrightness = brightness;
-      _resolveStyle(
+      _resolveStyle(_styleUrlFor(
+        mapType,
         brightness == Brightness.dark ? MapStyle.dark : MapStyle.light,
-      );
+      ));
     }
 
     ref.listen(themeBrightnessProvider(context), (previous, next) {
       // maplibre_gl has no live "recolor" API for a loaded style — the
-      // supported way to switch light/dark basemaps is to swap
+      // supported way to switch light/dark/satellite basemaps is to swap
       // MapLibreMap.styleString itself, which triggers a full style
       // reload (onStyleLoadedCallback fires again and re-adds sources).
       if (previous != next && mounted) {
         setState(() => _mapStyleBrightness = next);
-        _resolveStyle(next == Brightness.dark ? MapStyle.dark : MapStyle.light);
+        _resolveStyle(_styleUrlFor(
+          ref.read(mapTypeProvider),
+          next == Brightness.dark ? MapStyle.dark : MapStyle.light,
+        ));
       }
     });
 
-    final mapboxStyleUrl = _mapStyleBrightness == Brightness.dark
+    // Map-type switch (Settings → Map type): same "swap styleString and
+    // let it fully reload" mechanism as the light/dark listener above,
+    // since maplibre_gl has no live way to swap a loaded style's source
+    // (vector streets vs. satellite imagery) in place.
+    ref.listen(mapTypeProvider, (previous, next) {
+      if (previous != next && mounted) {
+        _resolveStyle(_styleUrlFor(
+          next,
+          _mapStyleBrightness == Brightness.dark
+              ? MapStyle.dark
+              : MapStyle.light,
+        ));
+      }
+    });
+
+    final standardStyleUrl = _mapStyleBrightness == Brightness.dark
         ? MapStyle.dark
         : MapStyle.light;
+    final mapboxStyleUrl = _styleUrlFor(mapType, standardStyleUrl);
     final resolvedStylePath = _resolvedStylePaths[mapboxStyleUrl];
 
     return Scaffold(
