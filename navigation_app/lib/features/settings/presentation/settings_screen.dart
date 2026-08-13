@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../app/providers/map_type_provider.dart';
 import '../../../app/providers/theme_mode_provider.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
@@ -10,6 +11,7 @@ import '../../../shared/widgets/buttons/pressable.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
 import '../../../shared/widgets/navigation/app_page_route.dart';
 import '../../favorite_routes/presentation/favorite_routes_screen.dart';
+import '../../map/map_style.dart';
 import '../../saved_places/presentation/saved_places_screen.dart';
 import '../../trip_history/presentation/trip_history_screen.dart';
 
@@ -39,6 +41,23 @@ extension _FirstOrNull<T> on Iterable<T> {
   T? get firstOrNull => isEmpty ? null : first;
 }
 
+/// Persists the user's [MapType] choice locally, mirroring [_ThemePrefs].
+class _MapTypePrefs {
+  static const _key = 'map_type';
+
+  static Future<void> save(MapType type) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_key, type.name);
+  }
+
+  static Future<MapType?> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_key);
+    if (raw == null) return null;
+    return MapType.values.where((m) => m.name == raw).firstOrNull;
+  }
+}
+
 /// Settings screen (product spec §53): theme selection plus a short,
 /// honest account of which real providers power the app — no invented
 /// "premium" claims, just what's actually wired up.
@@ -54,6 +73,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void initState() {
     super.initState();
     _restoreSavedTheme();
+    _restoreSavedMapType();
   }
 
   Future<void> _restoreSavedTheme() async {
@@ -68,11 +88,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _ThemePrefs.save(mode);
   }
 
+  Future<void> _restoreSavedMapType() async {
+    final saved = await _MapTypePrefs.load();
+    if (saved != null && mounted) {
+      ref.read(mapTypeProvider.notifier).setType(saved);
+    }
+  }
+
+  void _setMapType(MapType type) {
+    ref.read(mapTypeProvider.notifier).setType(type);
+    _MapTypePrefs.save(type);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).appColors;
     final motion = MotionTokens.current();
     final currentMode = ref.watch(themeModeProvider);
+    final currentMapType = ref.watch(mapTypeProvider);
 
     return Scaffold(
       backgroundColor: colors.background,
@@ -169,6 +202,72 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     );
                   }).toList(),
                 ),
+              ),
+            ),
+            const SizedBox(height: 28),
+            _SectionLabel('Map type'),
+            const SizedBox(height: 10),
+            GlassSurface(
+              borderRadius: BorderRadius.circular(20),
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                children: MapType.values.map((type) {
+                  final isSelected = type == currentMapType;
+                  return Pressable(
+                    onTap: () => _setMapType(type),
+                    borderRadius: BorderRadius.circular(14),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOutCubic,
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient:
+                            isSelected ? AppGradients.brandSubtle(colors) : null,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isSelected
+                              ? colors.accent.withOpacity(0.3)
+                              : Colors.transparent,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            switch (type) {
+                              MapType.standard => Icons.map_rounded,
+                              MapType.satellite => Icons.satellite_alt_rounded,
+                            },
+                            size: 20,
+                            color:
+                                isSelected ? colors.accent : colors.onSurfaceMuted,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            switch (type) {
+                              MapType.standard => 'Standard',
+                              MapType.satellite => 'Satellite',
+                            },
+                            style: TextStyle(
+                              color: isSelected
+                                  ? colors.onSurface
+                                  : colors.onSurfaceMuted,
+                              fontSize: 15,
+                              fontWeight:
+                                  isSelected ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (isSelected)
+                            Icon(Icons.check_rounded,
+                                color: colors.accent, size: 18),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
             const SizedBox(height: 28),
