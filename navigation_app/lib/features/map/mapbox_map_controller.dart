@@ -2,10 +2,12 @@ import 'package:flutter/widgets.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../core/animation/motion_tokens.dart';
+import '../../domain/entities/along_route_poi.dart';
 import '../../domain/entities/geo_point.dart';
 import '../../domain/entities/parking_spot.dart';
 import '../../domain/entities/place.dart';
 import '../../domain/entities/route.dart';
+import '../../domain/entities/route_stop.dart';
 import 'geojson_builder.dart';
 import 'map_style.dart';
 import 'map_style_resolver.dart';
@@ -103,7 +105,103 @@ class MapboxMapController {
       ),
     );
 
+    // Multi-stop markers (product spec "Маршрут с несколькими
+    // остановками": every stop shown as its own marker on the map,
+    // numbered in visiting order via the `label` property).
+    await _map.addSource(
+      MapStyle.stopMarkersSourceId,
+      const GeojsonSourceProperties(data: {'type': 'FeatureCollection', 'features': []}),
+    );
+    await _map.addCircleLayer(
+      MapStyle.stopMarkersSourceId,
+      MapStyle.stopMarkersLayerId,
+      const CircleLayerProperties(
+        circleRadius: 9,
+        circleColor: '#F5B301',
+        circleStrokeWidth: 3,
+        circleStrokeColor: '#FFFFFF',
+      ),
+    );
+    await _map.addSymbolLayer(
+      MapStyle.stopMarkersSourceId,
+      MapStyle.stopMarkersLabelLayerId,
+      const SymbolLayerProperties(
+        textField: '{label}',
+        textSize: 11,
+        textColor: '#0B1220',
+        textAllowOverlap: true,
+        textIgnorePlacement: true,
+      ),
+    );
+
+    // «По пути» POI markers found along the active route (product spec
+    // «По пути») — a distinct visual style from search/parking markers
+    // so it reads as "found on your way", not a generic result.
+    await _map.addSource(
+      MapStyle.alongRoutePoiSourceId,
+      const GeojsonSourceProperties(data: {'type': 'FeatureCollection', 'features': []}),
+    );
+    await _map.addCircleLayer(
+      MapStyle.alongRoutePoiSourceId,
+      MapStyle.alongRoutePoiLayerId,
+      const CircleLayerProperties(
+        circleRadius: 7,
+        circleColor: '#12B8A6',
+        circleStrokeWidth: 2,
+        circleStrokeColor: '#FFFFFF',
+        circleOpacity: 0.95,
+      ),
+    );
+
+    await _addBuildingExtrusionLayer();
+
     _sourcesReady = true;
+  }
+
+  /// Adds a 3D-building `fill-extrusion` layer on top of the classic
+  /// Mapbox `streets`/`dark` style's own `building` layer (product spec
+  /// "3D-здания, если они доступны").
+  ///
+  /// The classic Mapbox Style Spec styles this app uses (see the note
+  /// on [MapStyle] about why `mapbox/standard` can't be used with
+  /// MapLibre Native) already ship a vector `building` layer with real
+  /// `height`/`min_height` feature properties — they just render it
+  /// flat by default. Adding our own `fill-extrusion` layer reading
+  /// those same properties turns it into real massed 3D buildings
+  /// without needing Mapbox's proprietary Standard style. If a style
+  /// ever doesn't carry that layer/properties (e.g. a future non-Mapbox
+  /// style), this fails silently and the map simply stays 2D — never a
+  /// crash, and never fabricated building heights.
+  Future<void> _addBuildingExtrusionLayer() async {
+    try {
+      await _map.addFillExtrusionLayer(
+        'composite',
+        MapStyle.buildingExtrusionLayerId,
+        FillExtrusionLayerProperties(
+          fillExtrusionColor: '#B8C4CC',
+          fillExtrusionOpacity: 0.75,
+          fillExtrusionHeight: [
+            Expressions.get,
+            'height',
+          ],
+          fillExtrusionBase: [
+            Expressions.get,
+            'min_height',
+          ],
+        ),
+        sourceLayer: 'building',
+        minzoom: 15,
+        filter: [
+          Expressions.eq,
+          [Expressions.get, 'extrude'],
+          'true',
+        ],
+      );
+    } catch (_) {
+      // Style doesn't expose a 'building' source-layer with the
+      // expected properties — degrade gracefully to the flat 2D
+      // building footprints the base style already draws.
+    }
   }
 
   // ---------------------------------------------------------------------
@@ -201,20 +299,43 @@ class MapboxMapController {
   /// Frame-to-frame follow update during active navigation — short
   /// duration so it keeps pace with frequent GPS samples without ever
   /// feeling like it's "catching up".
-  Future<void> followUser(GeoPoint point, {required double bearing}) {
+  ///
+  /// [maneuverProximity] is `0.0` when no maneuver is close (the
+  /// standard navigation zoom/tilt applies) ramping up to `1.0` right
+  /// at the maneuver, smoothly pushing zoom up to [_maxManeuverZoom]
+  /// and tilt down slightly so the upcoming turn reads clearly (product
+  /// spec «плавное приближение перед поворотами») — never a hard cut,
+  /// since every value here is a continuous interpolation of the same
+  /// two endpoints frame to frame.
+  Future<void> followUser(
+    GeoPoint point, {
+    required double bearing,
+    double maneuverProximity = 0.0,
+  }) {
+    final t = maneuverProximity.clamp(0.0, 1.0);
+    final zoom = _lerp(_baseNavigationZoom, _maxManeuverZoom, t);
+    final tilt = _lerp(_baseNavigationTilt, _maneuverTilt, t);
+
     final spec = MotionTokens.current().locationMarkerMove;
     return _map.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
           target: LatLng(point.latitude, point.longitude),
-          zoom: 18,
-          tilt: 55,
+          zoom: zoom,
+          tilt: tilt,
           bearing: bearing,
         ),
       ),
       duration: spec.duration,
     );
   }
+
+  static const double _baseNavigationZoom = 18;
+  static const double _maxManeuverZoom = 19.4;
+  static const double _baseNavigationTilt = 55;
+  static const double _maneuverTilt = 50;
+
+  double _lerp(double a, double b, double t) => a + (b - a) * t;
 
   Future<void> zoomToWorldView() {
     final spec = MotionTokens.current().mapCameraLong;
