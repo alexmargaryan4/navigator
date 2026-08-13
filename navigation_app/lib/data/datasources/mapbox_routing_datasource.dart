@@ -25,13 +25,15 @@ class MapboxRoutingDataSource {
     required GeoPoint destination,
     required TravelMode mode,
     required RouteOptions options,
+    List<GeoPoint> waypoints = const [],
   }) async {
     if (!AppConfig.hasMapKey) {
       return const Result.err(ConfigurationFailure());
     }
 
+    final allPoints = [origin, ...waypoints, destination];
     final coords =
-        '${origin.longitude},${origin.latitude};${destination.longitude},${destination.latitude}';
+        allPoints.map((p) => '${p.longitude},${p.latitude}').join(';');
 
     final excludeParts = <String>[
       if (options.avoidTolls) 'toll',
@@ -40,14 +42,22 @@ class MapboxRoutingDataSource {
 
     final isTrafficAware = mode == TravelMode.driving;
 
+    // Alternatives only make sense for a plain two-point request — Mapbox
+    // doesn't return meaningfully different alternatives for a
+    // multi-waypoint request, and requesting them anyway just wastes a
+    // quota call, so they're switched off whenever waypoints are present.
+    final requestAlternatives = options.alternatives && waypoints.isEmpty;
+
     final uri = Uri.parse('$_base/${mode.mapboxProfile}/$coords').replace(
       queryParameters: {
         'access_token': AppConfig.mapApiKey,
         'geometries': 'polyline6',
         'overview': 'full',
         'steps': 'true',
-        'alternatives': options.alternatives ? 'true' : 'false',
-        'annotations': isTrafficAware ? 'congestion,duration,distance' : 'duration,distance',
+        'alternatives': requestAlternatives ? 'true' : 'false',
+        'annotations': isTrafficAware
+            ? 'congestion,duration,distance,maxspeed'
+            : 'duration,distance',
         'banner_instructions': 'true',
         if (excludeParts.isNotEmpty) 'exclude': excludeParts.join(','),
       },
@@ -93,7 +103,9 @@ class MapboxRoutingDataSource {
     final legs = (raw['legs'] as List? ?? []).cast<Map<String, dynamic>>();
     final steps = <RouteStep>[];
     final trafficSegments = <TrafficSegment>[];
+    final speedLimitSegments = <SpeedLimitSegment>[];
     var tolls = false;
+    var geometryOffset = 0;
 
     for (final leg in legs) {
       final legSteps = (leg['steps'] as List? ?? []).cast<Map<String, dynamic>>();
@@ -121,8 +133,25 @@ class MapboxRoutingDataSource {
       final annotation = leg['annotation'] as Map<String, dynamic>?;
       final congestion = (annotation?['congestion'] as List?)?.cast<String>();
       if (congestion != null) {
-        trafficSegments.addAll(_collapseCongestion(congestion));
+        trafficSegments.addAll(
+          _collapseCongestion(congestion, offset: geometryOffset),
+        );
       }
+
+      final maxspeed = (annotation?['maxspeed'] as List?)
+          ?.cast<Map<String, dynamic>>();
+      if (maxspeed != null) {
+        speedLimitSegments.addAll(
+          _collapseMaxspeed(maxspeed, offset: geometryOffset),
+        );
+      }
+
+      // Each leg's annotation arrays cover that leg's own coordinate
+      // count (distance array length = coordinates - 1); advance the
+      // offset so a multi-leg (multi-stop) route's segments still index
+      // correctly into the single combined [geometry] list.
+      final legDistances = (annotation?['distance'] as List?)?.length ?? 0;
+      geometryOffset += legDistances;
 
       final tollFlag = leg['toll'] ?? leg['has_toll'];
       if (tollFlag == true) tolls = true;
@@ -136,6 +165,7 @@ class MapboxRoutingDataSource {
       durationSeconds: (raw['duration'] as num? ?? 0).toDouble(),
       steps: steps,
       trafficSegments: trafficSegments,
+      speedLimitSegments: speedLimitSegments,
       hasTolls: tolls && hasTollsRequested,
       isPrimary: index == 0,
     );
@@ -143,8 +173,12 @@ class MapboxRoutingDataSource {
 
   /// Collapses a per-coordinate-pair congestion string list (Mapbox's
   /// format) into contiguous [TrafficSegment] runs, so the UI doesn't
-  /// need to re-derive this on every rebuild.
-  List<TrafficSegment> _collapseCongestion(List<String> congestion) {
+  /// need to re-derive this on every rebuild. [offset] shifts indices so
+  /// they land correctly in a multi-leg route's combined geometry list.
+  List<TrafficSegment> _collapseCongestion(
+    List<String> congestion, {
+    int offset = 0,
+  }) {
     final segments = <TrafficSegment>[];
     if (congestion.isEmpty) return segments;
 
@@ -155,8 +189,8 @@ class MapboxRoutingDataSource {
       final level = _levelFrom(congestion[i]);
       if (level != currentLevel) {
         segments.add(TrafficSegment(
-          startIndex: start,
-          endIndex: i,
+          startIndex: start + offset,
+          endIndex: i + offset,
           level: currentLevel,
         ));
         start = i;
@@ -164,8 +198,8 @@ class MapboxRoutingDataSource {
       }
     }
     segments.add(TrafficSegment(
-      startIndex: start,
-      endIndex: congestion.length,
+      startIndex: start + offset,
+      endIndex: congestion.length + offset,
       level: currentLevel,
     ));
     return segments;
@@ -178,4 +212,61 @@ class MapboxRoutingDataSource {
         'severe' => TrafficLevel.severe,
         _ => TrafficLevel.unknown,
       };
+
+  /// Collapses Mapbox's per-coordinate-pair `maxspeed` annotation
+  /// (`{"speed": 60, "unit": "km/h"}` / `{"unknown": true}` /
+  /// `{"none": true}`) into contiguous [SpeedLimitSegment] runs.
+  /// Unknown/none/unparseable entries simply produce no segment for that
+  /// stretch — never a fabricated value (product spec requirement: never
+  /// invent a speed limit).
+  List<SpeedLimitSegment> _collapseMaxspeed(
+    List<Map<String, dynamic>> maxspeed, {
+    int offset = 0,
+  }) {
+    final segments = <SpeedLimitSegment>[];
+    if (maxspeed.isEmpty) return segments;
+
+    double? start;
+    int? runStart;
+
+    void flush(int endIndex) {
+      if (runStart != null && start != null) {
+        segments.add(SpeedLimitSegment(
+          startIndex: runStart! + offset,
+          endIndex: endIndex + offset,
+          speedKph: start!,
+        ));
+      }
+      runStart = null;
+      start = null;
+    }
+
+    for (var i = 0; i < maxspeed.length; i++) {
+      final value = _speedKphFrom(maxspeed[i]);
+      if (value == null) {
+        flush(i);
+        continue;
+      }
+      if (start == null) {
+        start = value;
+        runStart = i;
+      } else if ((value - start!).abs() > 0.01) {
+        flush(i);
+        start = value;
+        runStart = i;
+      }
+    }
+    flush(maxspeed.length);
+    return segments;
+  }
+
+  /// Converts a single Mapbox `maxspeed` annotation entry to km/h, or
+  /// `null` when the provider marked it unknown/absent.
+  double? _speedKphFrom(Map<String, dynamic> entry) {
+    if (entry['unknown'] == true || entry['none'] == true) return null;
+    final speed = entry['speed'];
+    if (speed is! num) return null;
+    final unit = (entry['unit'] as String?) ?? 'km/h';
+    return unit == 'mph' ? speed.toDouble() * 1.609344 : speed.toDouble();
+  }
 }
