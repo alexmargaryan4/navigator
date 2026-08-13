@@ -192,7 +192,7 @@ class MapboxMapController {
         sourceLayer: 'building',
         minzoom: 15,
         filter: [
-          Expressions.eq,
+          '==',
           [Expressions.get, 'extrude'],
           'true',
         ],

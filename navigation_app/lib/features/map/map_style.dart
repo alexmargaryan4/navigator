@@ -54,4 +54,21 @@ abstract final class MapStyle {
 
   static const String parkingMarkersSourceId = 'parking-markers-source';
   static const String parkingMarkersLayerId = 'parking-markers-layer';
+
+  /// Multi-stop route markers (product spec "Маршрут с несколькими
+  /// остановками"): one circle per stop plus a numbered label on top.
+  static const String stopMarkersSourceId = 'stop-markers-source';
+  static const String stopMarkersLayerId = 'stop-markers-layer';
+  static const String stopMarkersLabelLayerId = 'stop-markers-label-layer';
+
+  /// "По пути" POI markers found along the active route (product spec
+  /// «По пути»).
+  static const String alongRoutePoiSourceId = 'along-route-poi-source';
+  static const String alongRoutePoiLayerId = 'along-route-poi-layer';
+
+  /// 3D building `fill-extrusion` layer id (product spec "3D-здания,
+  /// если они доступны"). Reads the classic style's own `building`
+  /// source-layer — see [_addBuildingExtrusionLayer] in
+  /// [MapboxMapController].
+  static const String buildingExtrusionLayerId = 'building-extrusion-layer';
 }
