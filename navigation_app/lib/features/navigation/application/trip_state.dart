@@ -1,7 +1,9 @@
 import '../../../core/errors/app_failure.dart';
 import '../../../domain/entities/geo_point.dart';
+import '../../../domain/entities/nav_warning.dart';
 import '../../../domain/entities/place.dart';
 import '../../../domain/entities/route.dart';
+import '../../../domain/entities/route_stop.dart';
 import '../../../domain/entities/travel_mode.dart';
 import '../../../domain/repositories/routing_repository.dart';
 
@@ -30,6 +32,7 @@ class TripState {
   const TripState({
     this.phase = TripPhase.idle,
     this.destination,
+    this.stops = const [],
     this.mode = TravelMode.driving,
     this.options = const RouteOptions(),
     this.routes = const [],
@@ -40,10 +43,19 @@ class TripState {
     this.remainingDistanceMeters,
     this.remainingDurationSeconds,
     this.isFollowingUser = true,
+    this.currentSpeedKph,
+    this.currentSpeedLimitKph,
+    this.activeWarnings = const [],
   });
 
   final TripPhase phase;
   final Place? destination;
+
+  /// Intermediate stops for a multi-stop trip (product spec «Маршрут с
+  /// несколькими остановками»), in visiting order. Empty for a plain
+  /// A→B trip. Ordering here is the single source of truth the route is
+  /// calculated against — reordering (drag-and-drop) recalculates.
+  final List<RouteStop> stops;
   final TravelMode mode;
   final RouteOptions options;
   final List<NavRoute> routes;
@@ -65,6 +77,35 @@ class TripState {
   /// set to `false` the moment the user manually pans the map.
   final bool isFollowingUser;
 
+  /// The user's real, GPS-reported ground speed right now, in km/h
+  /// (product spec «Ограничение скорости»). `null` whenever the
+  /// platform hasn't supplied a speed sample yet — never a guessed
+  /// value.
+  final double? currentSpeedKph;
+
+  /// The real, provider-reported speed limit at the user's current
+  /// position on the active route, in km/h. `null` whenever the
+  /// routing provider has no data for this stretch of road — the UI
+  /// must render "no data" rather than a fabricated number.
+  final double? currentSpeedLimitKph;
+
+  /// Proactive, ahead-of-time warnings for the active route (product
+  /// spec «Умные предупреждения»), nearest first — every entry is
+  /// derived from real route data, see [NavWarning].
+  final List<NavWarning> activeWarnings;
+
+  /// Whether the user's current real speed exceeds the real posted
+  /// limit — `false` whenever either figure is unavailable, since a
+  /// speeding warning must never be shown on a guess.
+  bool get isSpeeding {
+    final speed = currentSpeedKph;
+    final limit = currentSpeedLimitKph;
+    if (speed == null || limit == null) return false;
+    return speed > limit + _speedingToleranceKph;
+  }
+
+  static const double _speedingToleranceKph = 5;
+
   NavRoute? get selectedRoute {
     if (routes.isEmpty) return null;
     if (selectedRouteId == null) {
@@ -78,10 +119,15 @@ class TripState {
 
   bool get isActive => phase == TripPhase.navigating;
 
+  /// Whether this trip currently has intermediate stops (product spec
+  /// «Маршрут с несколькими остановками»).
+  bool get isMultiStop => stops.isNotEmpty;
+
   TripState copyWith({
     TripPhase? phase,
     Place? destination,
     bool clearDestination = false,
+    List<RouteStop>? stops,
     TravelMode? mode,
     RouteOptions? options,
     List<NavRoute>? routes,
@@ -94,10 +140,16 @@ class TripState {
     double? remainingDistanceMeters,
     double? remainingDurationSeconds,
     bool? isFollowingUser,
+    double? currentSpeedKph,
+    bool clearCurrentSpeedKph = false,
+    double? currentSpeedLimitKph,
+    bool clearCurrentSpeedLimitKph = false,
+    List<NavWarning>? activeWarnings,
   }) {
     return TripState(
       phase: phase ?? this.phase,
       destination: clearDestination ? null : (destination ?? this.destination),
+      stops: stops ?? this.stops,
       mode: mode ?? this.mode,
       options: options ?? this.options,
       routes: routes ?? this.routes,
@@ -111,6 +163,13 @@ class TripState {
       remainingDurationSeconds:
           remainingDurationSeconds ?? this.remainingDurationSeconds,
       isFollowingUser: isFollowingUser ?? this.isFollowingUser,
+      currentSpeedKph: clearCurrentSpeedKph
+          ? null
+          : (currentSpeedKph ?? this.currentSpeedKph),
+      currentSpeedLimitKph: clearCurrentSpeedLimitKph
+          ? null
+          : (currentSpeedLimitKph ?? this.currentSpeedLimitKph),
+      activeWarnings: activeWarnings ?? this.activeWarnings,
     );
   }
 
