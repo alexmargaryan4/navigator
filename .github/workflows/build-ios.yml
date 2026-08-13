@@ -51,11 +51,35 @@ jobs:
 
       - name: Build unsigned iOS release
         run: |
-          flutter build ios --release --no-codesign \
+          set -e
+          # `flutter build ios --release --no-codesign` still runs flutter_tools'
+          # own Development-Team check for release/device builds, which fails
+          # even with signing disabled in Xcode (a long-standing Flutter
+          # limitation — see flutter/flutter#113203, #148370). Building the
+          # Flutter assets first and then invoking xcodebuild directly avoids
+          # that check entirely while still producing a real, unsigned Runner.app.
+          flutter build ios --release --no-codesign --config-only \
             --dart-define=MAP_API_KEY=${{ secrets.MAP_API_KEY }} \
             --dart-define=GEOAPIFY_API_KEY=${{ secrets.GEOAPIFY_API_KEY }} \
             --dart-define=GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
-            
+
+          cd ios
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath ../build/ios/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            build
+
+          mkdir -p ../build/ios/iphoneos
+          rm -rf ../build/ios/iphoneos/Runner.app
+          cp -r ../build/ios/DerivedData/Build/Products/Release-iphoneos/Runner.app \
+            ../build/ios/iphoneos/Runner.app
 
       - name: Package unsigned IPA
         run: |
