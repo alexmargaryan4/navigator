@@ -8,16 +8,23 @@ import '../../data/datasources/groq_ai_datasource.dart';
 import '../../data/datasources/mapbox_parking_datasource.dart';
 import '../../data/datasources/mapbox_routing_datasource.dart';
 import '../../data/datasources/mapbox_search_datasource.dart';
+import '../../data/repositories/favorite_routes_repository_impl.dart';
 import '../../data/repositories/parking_repository_impl.dart';
 import '../../data/repositories/routing_repository_impl.dart';
+import '../../data/repositories/saved_places_repository_impl.dart';
 import '../../data/repositories/search_repository_impl.dart';
 import '../../data/repositories/traffic_repository_impl.dart';
+import '../../data/repositories/trip_history_repository_impl.dart';
+import '../../data/services/along_route_search_service.dart';
 import '../../data/services/hybrid_search_service.dart';
+import '../../domain/repositories/favorite_routes_repository.dart';
 import '../../domain/repositories/parking_repository.dart';
 import '../../domain/repositories/routing_repository.dart';
+import '../../domain/repositories/saved_places_repository.dart';
 import '../../domain/repositories/search_provider.dart';
 import '../../domain/repositories/search_repository.dart';
 import '../../domain/repositories/traffic_repository.dart';
+import '../../domain/repositories/trip_history_repository.dart';
 import '../../services/ai/ai_navigation_service.dart';
 import '../../services/voice/speech_to_text_service.dart';
 import '../../services/voice/text_to_speech_service.dart';
@@ -107,6 +114,33 @@ final parkingRepositoryProvider = Provider<ParkingRepository>(
 
 final trafficRepositoryProvider = Provider<TrafficRepository>(
   (ref) => const TrafficRepositoryImpl(),
+);
+
+/// Finds real POIs near a specific route's geometry (product spec «По
+/// пути») rather than merely near the user — see [AlongRouteSearchService].
+final alongRouteSearchServiceProvider = Provider<AlongRouteSearchService>(
+  (ref) => AlongRouteSearchService(
+    parkingDataSource: ref.watch(mapboxParkingDataSourceProvider),
+    client: ref.watch(apiClientProvider),
+  ),
+);
+
+// ---------------------------------------------------------------------------
+// Local persistence (saved places, favorite routes, trip history) — no
+// backend; everything here is on-device via SharedPreferences (see
+// LocalJsonStore).
+// ---------------------------------------------------------------------------
+
+final savedPlacesRepositoryProvider = Provider<SavedPlacesRepository>(
+  (ref) => SavedPlacesRepositoryImpl(),
+);
+
+final favoriteRoutesRepositoryProvider = Provider<FavoriteRoutesRepository>(
+  (ref) => FavoriteRoutesRepositoryImpl(),
+);
+
+final tripHistoryRepositoryProvider = Provider<TripHistoryRepository>(
+  (ref) => TripHistoryRepositoryImpl(),
 );
 
 // ---------------------------------------------------------------------------
