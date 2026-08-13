@@ -1,5 +1,20 @@
 import '../../core/config/app_config.dart';
 
+/// The user-facing map rendering mode (product spec: map-mode switcher in
+/// Settings). Independent of light/dark *theme* — [satellite] has its own
+/// single look and doesn't follow the app's brightness, while [standard]
+/// still swaps between [MapStyle.light] and [MapStyle.dark] as it always
+/// has.
+enum MapType {
+  /// The existing vector street map, following the app's light/dark theme.
+  standard,
+
+  /// Satellite imagery with street/label overlays ([MapStyle.satellite]).
+  satellite;
+
+  static const MapType fallback = MapType.standard;
+}
+
 /// Centralized Mapbox Style URLs and the vector-source/layer identifiers
 /// used to control the traffic overlay on [MapboxMapController].
 ///
@@ -30,6 +45,14 @@ abstract final class MapStyle {
   /// as `streets-v12` but with a dark basemap. Fully supported by
   /// MapLibre's vector renderer.
   static String get dark => _styled('dark-v11');
+
+  /// `satellite-streets-v12` — Mapbox's satellite imagery basemap with
+  /// vector street/label/road overlays on top (roads, place names,
+  /// POIs), so it stays fully navigable rather than being bare aerial
+  /// photography. Same classic Style Spec v8 family as [light]/[dark],
+  /// so it's fully supported by MapLibre's renderer — no Mapbox Standard
+  /// / GL Native dependency involved.
+  static String get satellite => _styled('satellite-streets-v12');
 
   /// Mapbox's live traffic vector tileset, added as an extra source on
   /// top of the base style so the always-on road-coloring traffic
