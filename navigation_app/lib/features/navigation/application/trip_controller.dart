@@ -263,7 +263,14 @@ class TripController extends Notifier<TripState> {
   // -------------------------------------------------------------------
 
   void startNavigation() {
-    if (state.selectedRoute == null) return;
+    // Guards against double-invocation (e.g. a fast double-tap on the
+    // "Start Navigation" button landing before the UI has rebuilt past
+    // routePreview) re-running the whole method — which would recreate
+    // the GPS subscription and, critically, write a *second*
+    // TripHistoryStatus.started entry for the same trip.
+    if (state.selectedRoute == null || state.phase == TripPhase.navigating) {
+      return;
+    }
 
     _announcedStepIndices.clear();
     _announcedWarningKeys.clear();
