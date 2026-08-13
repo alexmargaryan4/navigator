@@ -8,6 +8,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
 import '../../../shared/widgets/glass/glass_surface.dart';
+import '../../../shared/widgets/navigation/app_page_route.dart';
+import '../../favorite_routes/presentation/favorite_routes_screen.dart';
+import '../../saved_places/presentation/saved_places_screen.dart';
+import '../../trip_history/presentation/trip_history_screen.dart';
 
 /// Persists the user's [ThemeMode] choice locally.
 ///
@@ -168,6 +172,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 28),
+            _SectionLabel('Places & trips'),
+            const SizedBox(height: 10),
+            GlassSurface(
+              borderRadius: BorderRadius.circular(20),
+              padding: const EdgeInsets.all(6),
+              child: Column(
+                children: [
+                  _NavRow(
+                    icon: Icons.bookmark_rounded,
+                    label: 'Saved places',
+                    onTap: () => Navigator.of(context).push(
+                      AppPageRoute.fadeSlide(const SavedPlacesScreen()),
+                    ),
+                  ),
+                  _NavRow(
+                    icon: Icons.route_rounded,
+                    label: 'Favorite routes',
+                    onTap: () => Navigator.of(context).push(
+                      AppPageRoute.fadeSlide(const FavoriteRoutesScreen()),
+                    ),
+                  ),
+                  _NavRow(
+                    icon: Icons.history_rounded,
+                    label: 'Trip history',
+                    onTap: () => Navigator.of(context).push(
+                      AppPageRoute.fadeSlide(const TripHistoryScreen()),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
             _SectionLabel('About'),
             const SizedBox(height: 10),
             GlassSurface(
@@ -196,6 +232,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: TextStyle(color: colors.onSurfaceMuted, fontSize: 12.5, height: 1.5),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavRow extends StatelessWidget {
+  const _NavRow({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).appColors;
+    return Pressable(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: colors.onSurfaceMuted),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                color: colors.onSurface,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.chevron_right_rounded, color: colors.onSurfaceMuted, size: 20),
           ],
         ),
       ),
