@@ -21,12 +21,24 @@ class AiNavigationService {
 
   static const Set<String> _knownActions = {
     'calculate_route',
+    'add_stop',
     'find_parking',
+    'along_route_search',
+    'start_favorite_route',
     'clarification_needed',
     'unsupported',
   };
 
   static const Set<String> _knownModes = {'driving', 'walking', 'cycling'};
+
+  static const Set<String> _knownPoiCategories = {
+    'parking',
+    'gas_station',
+    'cafe',
+    'restaurant',
+    'shop',
+    'ev_charging',
+  };
 
   Future<Result<AiNavigationCommand>> interpret(String userText) async {
     final raw = await _dataSource.parseIntent(userText);
@@ -48,7 +60,10 @@ class AiNavigationService {
 
     final action = switch (actionRaw) {
       'calculate_route' => AiActionType.calculateRoute,
+      'add_stop' => AiActionType.addStop,
       'find_parking' => AiActionType.findParking,
+      'along_route_search' => AiActionType.alongRouteSearch,
+      'start_favorite_route' => AiActionType.startFavoriteRoute,
       'clarification_needed' => AiActionType.clarificationNeeded,
       _ => AiActionType.unsupported,
     };
@@ -69,14 +84,50 @@ class AiNavigationService {
     final arriveByTime = _safeTimeString(json['arrive_by_time']);
     final clarificationQuestion = _safeString(json['clarification_question']);
 
-    if (action == AiActionType.calculateRoute && destinationQuery == null) {
-      // A route action without any destination text is not actionable —
-      // downgrade to a clarification request rather than silently
-      // failing later in the pipeline.
+    final poiCategoryRaw = json['poi_category'];
+    final poiCategory =
+        (poiCategoryRaw is String && _knownPoiCategories.contains(poiCategoryRaw))
+            ? switch (poiCategoryRaw) {
+                'parking' => AiPoiCategory.parking,
+                'gas_station' => AiPoiCategory.gasStation,
+                'cafe' => AiPoiCategory.cafe,
+                'restaurant' => AiPoiCategory.restaurant,
+                'shop' => AiPoiCategory.shop,
+                'ev_charging' => AiPoiCategory.evCharging,
+                _ => null,
+              }
+            : null;
+
+    final favoriteRouteQuery = _safeString(json['favorite_route_query']);
+
+    if ((action == AiActionType.calculateRoute ||
+            action == AiActionType.addStop) &&
+        destinationQuery == null) {
+      // A route/stop action without any destination text is not
+      // actionable — downgrade to a clarification request rather than
+      // silently failing later in the pipeline.
       return const Result.ok(
         AiNavigationCommand(
           action: AiActionType.clarificationNeeded,
           clarificationQuestion: 'Where would you like to go?',
+        ),
+      );
+    }
+
+    if (action == AiActionType.alongRouteSearch && poiCategory == null) {
+      return const Result.ok(
+        AiNavigationCommand(
+          action: AiActionType.clarificationNeeded,
+          clarificationQuestion: 'What would you like to find along the way?',
+        ),
+      );
+    }
+
+    if (action == AiActionType.startFavoriteRoute && favoriteRouteQuery == null) {
+      return const Result.ok(
+        AiNavigationCommand(
+          action: AiActionType.clarificationNeeded,
+          clarificationQuestion: 'Which saved route would you like to start?',
         ),
       );
     }
@@ -89,6 +140,8 @@ class AiNavigationService {
       avoidHighways: avoidHighways,
       arriveByTime: arriveByTime,
       clarificationQuestion: clarificationQuestion,
+      poiCategory: poiCategory,
+      favoriteRouteQuery: favoriteRouteQuery,
     ));
   }
 
