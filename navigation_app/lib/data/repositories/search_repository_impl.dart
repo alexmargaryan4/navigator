@@ -36,12 +36,18 @@ class SearchRepositoryImpl implements SearchRepository {
 
   @override
   Future<Result<Place>> resolveOne(String query, {GeoPoint? proximity}) {
-    // AI navigation needs exactly one best destination for a spoken/typed
-    // phrase, not a ranked list to choose from, so this deliberately
-    // bypasses the hybrid fan-out and uses Mapbox's own single-result
-    // geocode directly — the same behavior as before hybrid search was
-    // introduced.
     return _mapboxDataSource.geocodeOne(query, proximity: proximity);
+  }
+
+  @override
+  Future<Result<List<Place>>> searchForAi(String query, {GeoPoint? proximity}) {
+    // Deliberately the exact same pipeline the search sheet uses —
+    // Mapbox + Geoapify in parallel, deduplicated, ranked (see
+    // HybridSearchService) — so AI navigation can never produce a
+    // destination the real search UI wouldn't also have found. Per the
+    // product spec, the AI is never the source of geographic truth;
+    // this hybrid search is.
+    return _hybridSearch.search(query, proximity: proximity, limit: 5);
   }
 
   @override

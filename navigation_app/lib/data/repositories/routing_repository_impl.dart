@@ -52,4 +52,21 @@ class RoutingRepositoryImpl implements RoutingRepository {
       err: (f) => Result.err(f),
     );
   }
+
+  @override
+  Future<Result<List<NavRoute>>> calculateMultiStopRoute({
+    required GeoPoint origin,
+    required List<GeoPoint> waypoints,
+    required GeoPoint destination,
+    required TravelMode mode,
+    RouteOptions options = const RouteOptions(),
+  }) {
+    return _dataSource.directions(
+      origin: origin,
+      destination: destination,
+      mode: mode,
+      options: options,
+      waypoints: waypoints,
+    );
+  }
 }
