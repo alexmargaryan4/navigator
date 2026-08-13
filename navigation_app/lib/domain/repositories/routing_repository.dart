@@ -40,4 +40,22 @@ abstract interface class RoutingRepository {
     required TravelMode mode,
     RouteOptions options = const RouteOptions(),
   });
+
+  /// Calculates a route through an ordered list of intermediate
+  /// waypoints between [origin] and [destination] (product spec «Маршрут
+  /// с несколькими остановками»). [waypoints] are visited in the given
+  /// order — reordering them client-side and calling this again is how
+  /// drag-and-drop reordering gets a fresh route.
+  ///
+  /// Real providers only support alternatives on simple A→B requests, so
+  /// multi-stop routes never request alternatives — this always returns
+  /// exactly one [NavRoute] (as the sole element of the list) or an
+  /// error.
+  Future<Result<List<NavRoute>>> calculateMultiStopRoute({
+    required GeoPoint origin,
+    required List<GeoPoint> waypoints,
+    required GeoPoint destination,
+    required TravelMode mode,
+    RouteOptions options = const RouteOptions(),
+  });
 }
