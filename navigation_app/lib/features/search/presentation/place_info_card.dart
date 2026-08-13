@@ -16,12 +16,18 @@ class PlaceInfoCard extends StatelessWidget {
     required this.isCalculating,
     required this.onStartRoute,
     required this.onDismiss,
+    this.onSave,
   });
 
   final Place place;
   final bool isCalculating;
   final VoidCallback onStartRoute;
   final VoidCallback onDismiss;
+
+  /// Optional — when provided, shows a bookmark button that lets the
+  /// user save this place with their own label (product spec
+  /// "Сохранённые места"). Omitted entirely has no effect on layout.
+  final VoidCallback? onSave;
 
   IconData get _categoryIcon => switch (place.category) {
         PlaceCategory.restaurant => Icons.restaurant_rounded,
@@ -114,11 +120,25 @@ class PlaceInfoCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            AppButton(
-              label: 'Start Route',
-              icon: Icons.directions_rounded,
-              loading: isCalculating,
-              onTap: isCalculating ? null : onStartRoute,
+            Row(
+              children: [
+                if (onSave != null) ...[
+                  AppIconButton(
+                    icon: Icons.bookmark_border_rounded,
+                    onTap: onSave,
+                    size: 48,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(
+                  child: AppButton(
+                    label: 'Start Route',
+                    icon: Icons.directions_rounded,
+                    loading: isCalculating,
+                    onTap: isCalculating ? null : onStartRoute,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
