@@ -31,6 +31,22 @@ abstract final class ManeuverPhrasing {
 
   static const String arrived = 'You have arrived at your destination.';
 
+  /// Spoken once when the user's real GPS speed first crosses the
+  /// real posted limit for the road they're on — never phrased from a
+  /// guessed limit (see [TripState.isSpeeding]).
+  static String speedingWarning(double limitKph) =>
+      'You are exceeding the speed limit of ${limitKph.round()} kilometers per hour.';
+
+  /// Spoken once, ahead of time, for a real traffic-provider congestion
+  /// segment on the active route (product spec «сильная пробка»).
+  static const String heavyTrafficAhead = 'Heavy traffic ahead on your route.';
+
+  /// Spoken once, ahead of time, for a real speed-limit change reported
+  /// by the routing provider (product spec «изменение ограничения
+  /// скорости»).
+  static String speedLimitChangeAhead(double newLimitKph) =>
+      'Speed limit changes to ${newLimitKph.round()} kilometers per hour ahead.';
+
   static String _distancePhrase(double meters) {
     if (meters < 50) return 'a moment';
     if (meters < 1000) {
