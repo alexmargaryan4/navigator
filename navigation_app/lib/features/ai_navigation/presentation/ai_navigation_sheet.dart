@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/providers/location_providers.dart';
 import '../../../app/providers/repository_providers.dart';
 import '../../../core/animation/motion_tokens.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../domain/entities/along_route_poi.dart';
+import '../../../domain/entities/geo_point.dart';
+import '../../../domain/entities/place.dart';
 import '../../../shared/widgets/buttons/app_button.dart';
 import '../../../shared/widgets/buttons/pressable.dart';
+import '../../../shared/widgets/glass/glass_surface.dart';
 import '../../../shared/widgets/loading/loading_indicators.dart';
+import '../../../shared/widgets/motion/staggered_fade_in.dart';
 import '../application/ai_navigation_controller.dart';
 
 /// The AI navigation panel (product spec §27, §44-48): a natural-
@@ -58,6 +64,10 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
     ref.read(aiNavigationControllerProvider.notifier).submit(value);
   }
 
+  void _confirmPlace(Place place) {
+    ref.read(aiNavigationControllerProvider.notifier).confirmPlace(place);
+  }
+
   Future<void> _toggleListening() async {
     final service = ref.read(speechToTextServiceProvider);
 
@@ -98,7 +108,12 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
     final state = ref.watch(aiNavigationControllerProvider);
 
     ref.listen(aiNavigationControllerProvider, (previous, next) {
-      if (next.phase == AiRequestPhase.done && mounted) {
+      // A "done" outcome that produced along-route results (product spec
+      // «По пути») has something to show right here in the sheet — only
+      // auto-close for the plain "route started" outcome.
+      if (next.phase == AiRequestPhase.done &&
+          next.alongRoutePois.isEmpty &&
+          mounted) {
         Navigator.of(context).maybePop();
       }
     });
@@ -174,6 +189,23 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
                 ),
                 const SizedBox(height: 16),
                 _buildStatus(context, state, colors, motion),
+                if (state.phase == AiRequestPhase.needsPlaceConfirmation) ...[
+                  const SizedBox(height: 8),
+                  _PlaceCandidateList(
+                    candidates: state.candidates,
+                    onSelect: _confirmPlace,
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                if (state.phase == AiRequestPhase.done &&
+                    state.alongRoutePois.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _AlongRouteResultList(
+                    category: state.alongRouteCategory,
+                    pois: state.alongRoutePois,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -270,6 +302,14 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
               compact: true,
             ),
           ),
+        AiRequestPhase.needsPlaceConfirmation => Padding(
+            key: const ValueKey('confirm'),
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'A few places match — which one did you mean?',
+              style: TextStyle(color: colors.onSurface, fontSize: 14),
+            ),
+          ),
         AiRequestPhase.needsClarification => Padding(
             key: const ValueKey('clarify'),
             padding: const EdgeInsets.only(bottom: 4),
@@ -286,8 +326,247 @@ class _AiNavigationSheetState extends ConsumerState<AiNavigationSheet> {
               style: TextStyle(color: colors.error, fontSize: 14),
             ),
           ),
-        AiRequestPhase.done => const SizedBox.shrink(key: ValueKey('done')),
+        AiRequestPhase.done => state.alongRoutePois.isNotEmpty
+            ? Padding(
+                key: const ValueKey('done-along-route'),
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '${state.alongRoutePois.length} found along your route',
+                  style: TextStyle(color: colors.onSurface, fontSize: 14),
+                ),
+              )
+            : const SizedBox.shrink(key: ValueKey('done')),
       },
+    );
+  }
+}
+
+/// Shown when the AI's destination text matched more than one plausible
+/// real place (product spec «Защита от неправильных мест при
+/// AI-поиске»): every candidate here came from the real hybrid search
+/// pipeline, with its own name/address/real distance — the app never
+/// silently picks one for the user.
+class _PlaceCandidateList extends ConsumerWidget {
+  const _PlaceCandidateList({required this.candidates, required this.onSelect});
+
+  final List<Place> candidates;
+  final ValueChanged<Place> onSelect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = Theme.of(context).appColors;
+    final lastKnown = ref.watch(lastKnownLocationProvider);
+    final sample = lastKnown.valueOrNull;
+
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(20),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 260),
+        child: ListView.separated(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: candidates.length,
+          separatorBuilder: (context, index) => Divider(
+            height: 1,
+            color: colors.divider.withOpacity(0.5),
+            indent: 20,
+            endIndent: 20,
+          ),
+          itemBuilder: (context, index) {
+            final place = candidates[index];
+            double? distanceMeters;
+            if (sample != null) {
+              distanceMeters = place.location.distanceTo(
+                GeoPoint(latitude: sample.latitude, longitude: sample.longitude),
+              );
+            }
+            return StaggeredFadeIn(
+              index: index,
+              child: _PlaceCandidateTile(
+                place: place,
+                distanceMeters: distanceMeters,
+                onTap: () => onSelect(place),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaceCandidateTile extends StatelessWidget {
+  const _PlaceCandidateTile({
+    required this.place,
+    required this.distanceMeters,
+    required this.onTap,
+  });
+
+  final Place place;
+  final double? distanceMeters;
+  final VoidCallback onTap;
+
+  IconData get _icon => switch (place.category) {
+        PlaceCategory.restaurant => Icons.restaurant_rounded,
+        PlaceCategory.shop => Icons.storefront_rounded,
+        PlaceCategory.airport => Icons.flight_takeoff_rounded,
+        PlaceCategory.hospital => Icons.local_hospital_rounded,
+        PlaceCategory.gasStation => Icons.local_gas_station_rounded,
+        PlaceCategory.landmark => Icons.account_balance_rounded,
+        PlaceCategory.attraction => Icons.attractions_rounded,
+        PlaceCategory.parking => Icons.local_parking_rounded,
+        PlaceCategory.city => Icons.location_city_rounded,
+        PlaceCategory.country => Icons.public_rounded,
+        PlaceCategory.street => Icons.signpost_rounded,
+        PlaceCategory.address => Icons.place_rounded,
+        PlaceCategory.other => Icons.place_rounded,
+      };
+
+  String? get _distanceLabel {
+    final meters = distanceMeters;
+    if (meters == null) return null;
+    if (meters < 1000) return '${meters.round()} m away';
+    return '${(meters / 1000).toStringAsFixed(1)} km away';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).appColors;
+    return Pressable(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppGradients.brandSubtle(colors),
+                border: Border.all(
+                  color: colors.accent.withOpacity(0.2),
+                  width: 1,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(_icon, color: colors.accent, size: 17),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    place.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: colors.onSurface,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (place.address.isNotEmpty)
+                    Text(
+                      place.address,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          TextStyle(color: colors.onSurfaceMuted, fontSize: 12),
+                    ),
+                ],
+              ),
+            ),
+            if (_distanceLabel != null) ...[
+              const SizedBox(width: 8),
+              Text(
+                _distanceLabel!,
+                style: TextStyle(color: colors.onSurfaceMuted, fontSize: 12),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Real «По пути» results (product spec «По пути»): every entry here
+/// came from [AlongRouteSearchService] and is genuinely close to the
+/// active route's geometry, not merely close to the user.
+class _AlongRouteResultList extends StatelessWidget {
+  const _AlongRouteResultList({required this.category, required this.pois});
+
+  final AlongRoutePoiCategory? category;
+  final List<AlongRoutePoi> pois;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).appColors;
+    return GlassSurface(
+      borderRadius: BorderRadius.circular(20),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 260),
+        child: ListView.separated(
+          shrinkWrap: true,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          itemCount: pois.length,
+          separatorBuilder: (context, index) => Divider(
+            height: 1,
+            color: colors.divider.withOpacity(0.5),
+            indent: 20,
+            endIndent: 20,
+          ),
+          itemBuilder: (context, index) {
+            final poi = pois[index];
+            return StaggeredFadeIn(
+              index: index,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            poi.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: colors.onSurface,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (poi.address.isNotEmpty)
+                            Text(
+                              poi.address,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.onSurfaceMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${poi.distanceFromRouteMeters.round()} m off route',
+                      style: TextStyle(color: colors.onSurfaceMuted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }
